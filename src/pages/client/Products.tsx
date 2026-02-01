@@ -338,9 +338,19 @@ export default function ProductsPage() {
                               >
                                 <Minus className="h-5 w-5" />
                               </Button>
-                              <div className="flex-1 text-center">
-                                <span className="text-xl font-bold">{cartQty}</span>
-                              </div>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={cartQty}
+                                onChange={(e) => {
+                                  const newQty = parseInt(e.target.value) || 0;
+                                  const delta = newQty - cartQty;
+                                  if (delta !== 0) {
+                                    updateCart(product.name, product.image_url, variant, delta);
+                                  }
+                                }}
+                                className="flex-1 h-12 text-center text-xl font-bold"
+                              />
                               <Button
                                 variant="outline"
                                 size="icon"
