@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Package, AlertTriangle, Plus, Minus, Check, X, LayoutGrid, List } from 'lucide-react';
-import { useProducts, useCategories, useUpdateVariant, type ProductVariant } from '@/hooks/useProducts';
+import { Search, Package, AlertTriangle, Plus, Minus, Check, X, LayoutGrid, List, Eye } from 'lucide-react';
+import { useProducts, useCategories, useUpdateVariant, type ProductVariant, type Product } from '@/hooks/useProducts';
 import { getStockStatus } from '@/lib/types';
 import { toast } from 'sonner';
+import { ProductDetailDialog } from '@/components/admin/ProductDetailDialog';
 
 interface InventoryItemWithProduct extends ProductVariant {
   productName: string;
@@ -181,6 +182,8 @@ export default function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   
   const { data: products, isLoading } = useProducts();
   const { data: categories } = useCategories();
@@ -227,6 +230,14 @@ export default function InventoryPage() {
       await updateVariant.mutateAsync({ id: variantId, stock_quantity: newStock });
     } catch (error) {
       toast.error('Failed to update stock');
+    }
+  };
+
+  const handleOpenProduct = (productId: string) => {
+    const product = products?.find(p => p.id === productId);
+    if (product) {
+      setSelectedProduct(product);
+      setDialogOpen(true);
     }
   };
   
@@ -382,7 +393,7 @@ export default function InventoryPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredItems.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleOpenProduct(item.productId)}>
                       <TableCell>
                         <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden">
                           {item.productImage ? (
@@ -398,7 +409,12 @@ export default function InventoryPage() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{item.productName}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {item.productName}
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </TableCell>
                       <TableCell>{item.variant_name}</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-sm">{item.sku || '-'}</TableCell>
                       <TableCell className="text-muted-foreground">{item.categoryName}</TableCell>
@@ -439,7 +455,7 @@ export default function InventoryPage() {
             /* Grid View */
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredItems.map((item) => (
-                <Card key={item.id} className="overflow-hidden">
+                <Card key={item.id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleOpenProduct(item.productId)}>
                   <div className="aspect-square bg-muted relative">
                     {item.productImage ? (
                       <img 
@@ -454,6 +470,11 @@ export default function InventoryPage() {
                     )}
                     <div className="absolute top-3 right-3">
                       {getStockBadge(item)}
+                    </div>
+                    <div className="absolute top-3 left-3">
+                      <Button size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleOpenProduct(item.productId); }}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                   
@@ -472,11 +493,13 @@ export default function InventoryPage() {
                       </div>
                     </div>
                     
-                    <StockEditorGrid 
-                      item={item} 
-                      onUpdate={handleStockUpdate}
-                      isUpdating={updateVariant.isPending}
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <StockEditorGrid 
+                        item={item} 
+                        onUpdate={handleStockUpdate}
+                        isUpdating={updateVariant.isPending}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -484,6 +507,16 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog
+        product={selectedProduct}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSelectedProduct(null);
+        }}
+      />
     </div>
   );
 }
