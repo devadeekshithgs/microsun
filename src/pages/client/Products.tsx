@@ -18,7 +18,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [cart, setCart] = useState<Map<string, { variant: ProductVariant; quantity: number; productName: string; productImage: string | null }>>(new Map());
-  
+  const [activeInputs, setActiveInputs] = useState<Set<string>>(new Set());
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: categories } = useCategories();
   
@@ -42,14 +42,26 @@ export default function ProductsPage() {
     }))
   );
   
-  const updateCart = (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => {
+  const updateCart = (productName: string, productImage: string | null, variant: ProductVariant, delta: number, forceRemove = false) => {
     setCart((prev) => {
       const next = new Map(prev);
       const existing = next.get(variant.id);
       const newQty = (existing?.quantity || 0) + delta;
       
-      if (newQty <= 0) {
+      if (newQty <= 0 && forceRemove) {
         next.delete(variant.id);
+        setActiveInputs(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(variant.id);
+          return newSet;
+        });
+      } else if (newQty <= 0) {
+        next.set(variant.id, { 
+          variant, 
+          quantity: 0, 
+          productName,
+          productImage
+        });
       } else {
         next.set(variant.id, { 
           variant, 
@@ -64,6 +76,39 @@ export default function ProductsPage() {
     if (delta > 0) {
       toast.success(`Added to cart`);
     }
+  };
+
+  const setCartQuantity = (productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => {
+    setCart((prev) => {
+      const next = new Map(prev);
+      next.set(variant.id, { 
+        variant, 
+        quantity: Math.max(0, newQty), 
+        productName,
+        productImage
+      });
+      return next;
+    });
+  };
+
+  const handleInputBlur = (productName: string, productImage: string | null, variant: ProductVariant) => {
+    const qty = getCartQuantity(variant.id);
+    if (qty <= 0) {
+      setCart((prev) => {
+        const next = new Map(prev);
+        next.delete(variant.id);
+        return next;
+      });
+      setActiveInputs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variant.id);
+        return newSet;
+      });
+    }
+  };
+
+  const activateInput = (variantId: string) => {
+    setActiveInputs(prev => new Set(prev).add(variantId));
   };
 
   const getCartQuantity = (variantId: string) => {
@@ -328,27 +373,25 @@ export default function ProductsPage() {
                         
                         {/* Add to Cart Controls */}
                         <div className="mt-4">
-                          {cartQty > 0 ? (
+                          {activeInputs.has(variant.id) || cartQty > 0 ? (
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-12 w-12"
-                                onClick={() => updateCart(product.name, product.image_url, variant, -1)}
+                                onClick={() => updateCart(product.name, product.image_url, variant, -1, true)}
                               >
                                 <Minus className="h-5 w-5" />
                               </Button>
                               <Input
                                 type="number"
-                                min="1"
-                                value={cartQty}
+                                min="0"
+                                value={cartQty || ''}
                                 onChange={(e) => {
                                   const newQty = parseInt(e.target.value) || 0;
-                                  const delta = newQty - cartQty;
-                                  if (delta !== 0) {
-                                    updateCart(product.name, product.image_url, variant, delta);
-                                  }
+                                  setCartQuantity(product.name, product.image_url, variant, newQty);
                                 }}
+                                onBlur={() => handleInputBlur(product.name, product.image_url, variant)}
                                 className="flex-1 h-12 text-center text-xl font-bold"
                               />
                               <Button
@@ -364,7 +407,10 @@ export default function ProductsPage() {
                           ) : (
                             <Button
                               className="w-full h-12 text-base"
-                              onClick={() => updateCart(product.name, product.image_url, variant, 1)}
+                              onClick={() => {
+                                activateInput(variant.id);
+                                updateCart(product.name, product.image_url, variant, 1);
+                              }}
                               disabled={!inStock}
                             >
                               <Plus className="mr-2 h-5 w-5" />
