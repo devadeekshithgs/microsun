@@ -41,7 +41,7 @@ export function Header({
               <Menu className="h-5 w-5" />
             </Button>}
           <Link to="/" className="flex items-center gap-2">
-            <img src={microsunLogo} alt="MicroSun" className="h-10 w-auto" />
+            <img src={microsunLogo} alt="MicroSun" className="h-16 md:h-20 w-auto" />
           </Link>
         </div>
 
