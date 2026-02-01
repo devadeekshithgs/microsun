@@ -14,8 +14,10 @@ import { ProductDetailDialog } from '@/components/admin/ProductDetailDialog';
 interface InventoryItemWithProduct extends ProductVariant {
   productName: string;
   productImage: string | null;
+  variantImage: string | null;
   categoryName: string;
   productId: string;
+  reorder_point: number | null;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -195,8 +197,10 @@ export default function InventoryPage() {
       ...variant,
       productName: product.name,
       productImage: product.image_url,
+      variantImage: (variant as any).image_url || null,
       categoryName: product.category?.name || 'Uncategorized',
       productId: product.id,
+      reorder_point: (variant as any).reorder_point ?? 20,
     }))
   ) || [];
   
@@ -386,8 +390,9 @@ export default function InventoryPage() {
                     <TableHead>Product</TableHead>
                     <TableHead>Variant</TableHead>
                     <TableHead>SKU</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-center w-[200px]">Stock (Click to Edit)</TableHead>
+                    <TableHead className="text-center w-[200px]">Stock</TableHead>
+                    <TableHead className="text-center">Alert</TableHead>
+                    <TableHead className="text-center">Reorder</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -396,9 +401,9 @@ export default function InventoryPage() {
                     <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleOpenProduct(item.productId)}>
                       <TableCell>
                         <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden">
-                          {item.productImage ? (
+                          {item.variantImage || item.productImage ? (
                             <img 
-                              src={item.productImage} 
+                              src={item.variantImage || item.productImage || ''} 
                               alt={item.productName}
                               className="h-full w-full object-cover"
                             />
@@ -417,9 +422,8 @@ export default function InventoryPage() {
                       </TableCell>
                       <TableCell>{item.variant_name}</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-sm">{item.sku || '-'}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.categoryName}</TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="outline"
                             size="icon"
@@ -445,6 +449,16 @@ export default function InventoryPage() {
                           </Button>
                         </div>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-amber-600 border-amber-300">
+                          {item.low_stock_threshold ?? 10}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-blue-600 border-blue-300">
+                          {item.reorder_point ?? 20}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{getStockBadge(item)}</TableCell>
                     </TableRow>
                   ))}
@@ -457,9 +471,9 @@ export default function InventoryPage() {
               {filteredItems.map((item) => (
                 <Card key={item.id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleOpenProduct(item.productId)}>
                   <div className="aspect-square bg-muted relative">
-                    {item.productImage ? (
+                    {item.variantImage || item.productImage ? (
                       <img 
-                        src={item.productImage} 
+                        src={item.variantImage || item.productImage || ''} 
                         alt={item.productName}
                         className="w-full h-full object-cover"
                       />

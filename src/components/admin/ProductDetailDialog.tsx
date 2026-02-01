@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, Trash2, Edit2, Save, X, Plus, Package, ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, Trash2, Edit2, Save, X, Plus, Package, ImageIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { useCategories, useUpdateProduct, useDeleteProduct, useCreateVariant, useUpdateVariant, useDeleteVariant, type Product, type ProductVariant } from '@/hooks/useProducts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -24,10 +24,19 @@ interface ProductDetailDialogProps {
 export function ProductDetailDialog({ product, open, onOpenChange }: ProductDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingVariantId, setUploadingVariantId] = useState<string | null>(null);
   const [editedProduct, setEditedProduct] = useState<Partial<Product>>({});
-  const [newVariant, setNewVariant] = useState({ variant_name: '', sku: '', stock_quantity: 0, low_stock_threshold: 10 });
+  const [newVariant, setNewVariant] = useState({ 
+    variant_name: '', 
+    sku: '', 
+    stock_quantity: 0, 
+    low_stock_threshold: 10,
+    reorder_point: 20 
+  });
   const [showAddVariant, setShowAddVariant] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const variantFileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedVariantForUpload, setSelectedVariantForUpload] = useState<string | null>(null);
 
   const { data: categories } = useCategories();
   const updateProduct = useUpdateProduct();
@@ -37,6 +46,8 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
   const deleteVariant = useDeleteVariant();
 
   if (!product) return null;
+
+  const variants = product.variants;
 
   const handleStartEdit = () => {
     setEditedProduct({
@@ -102,6 +113,36 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
     }
   };
 
+  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, variantId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVariantId(variantId);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `variant-${variantId}-${Date.now()}.${fileExt}`;
+      const filePath = `variants/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('product-images')
+        .getPublicUrl(filePath);
+
+      await updateVariant.mutateAsync({ id: variantId, image_url: publicUrl } as any);
+      toast.success('Variant image uploaded');
+    } catch (error) {
+      toast.error('Failed to upload variant image');
+    } finally {
+      setUploadingVariantId(null);
+      setSelectedVariantForUpload(null);
+    }
+  };
+
   const handleAddVariant = async () => {
     if (!newVariant.variant_name.trim()) {
       toast.error('Variant name is required');
@@ -115,9 +156,10 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
         sku: newVariant.sku || null,
         stock_quantity: newVariant.stock_quantity,
         low_stock_threshold: newVariant.low_stock_threshold,
-      });
+        reorder_point: newVariant.reorder_point,
+      } as any);
       toast.success('Variant added');
-      setNewVariant({ variant_name: '', sku: '', stock_quantity: 0, low_stock_threshold: 10 });
+      setNewVariant({ variant_name: '', sku: '', stock_quantity: 0, low_stock_threshold: 10, reorder_point: 20 });
       setShowAddVariant(false);
     } catch (error) {
       toast.error('Failed to add variant');
@@ -141,9 +183,18 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
     }
   };
 
+  const handleVariantThresholdUpdate = async (variantId: string, field: 'low_stock_threshold' | 'reorder_point', value: number) => {
+    try {
+      await updateVariant.mutateAsync({ id: variantId, [field]: value } as any);
+      toast.success('Threshold updated');
+    } catch (error) {
+      toast.error('Failed to update threshold');
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Package className="h-6 w-6" />
@@ -154,7 +205,7 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid md:grid-cols-[300px_1fr] gap-6">
+        <div className="grid md:grid-cols-[280px_1fr] gap-6">
           {/* Image Section */}
           <div className="space-y-4">
             <div className="aspect-square rounded-lg border bg-muted overflow-hidden relative group">
@@ -181,7 +232,7 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                   ) : (
                     <Upload className="h-4 w-4 mr-2" />
                   )}
-                  {product.image_url ? 'Change Image' : 'Upload Image'}
+                  {product.image_url ? 'Change' : 'Upload'}
                 </Button>
               </div>
               <input
@@ -192,8 +243,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                 onChange={handleImageUpload}
               />
             </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Default product image (variants can have their own)
+            </p>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant={product.is_active ? 'default' : 'secondary'}>
                 {product.is_active ? 'Active' : 'Inactive'}
               </Badge>
@@ -249,14 +303,12 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                   </div>
                 </>
               ) : (
-                <>
-                  <div>
-                    <h3 className="text-lg font-semibold">{product.name}</h3>
-                    <p className="text-muted-foreground mt-1">
-                      {product.description || 'No description provided'}
-                    </p>
-                  </div>
-                </>
+                <div>
+                  <h3 className="text-lg font-semibold">{product.name}</h3>
+                  <p className="text-muted-foreground mt-1">
+                    {product.description || 'No description provided'}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -265,7 +317,7 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
             {/* Variants Section */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold">Variants ({product.variants?.length || 0})</h4>
+                <h4 className="font-semibold">Variants ({variants?.length || 0})</h4>
                 <Button size="sm" variant="outline" onClick={() => setShowAddVariant(!showAddVariant)}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Variant
@@ -274,7 +326,7 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
 
               {showAddVariant && (
                 <div className="border rounded-lg p-4 bg-muted/30 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Variant Name *</Label>
                       <Input
@@ -301,12 +353,27 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Low Stock Threshold</Label>
+                      <Label className="text-xs flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3 text-amber-500" />
+                        Alert Point
+                      </Label>
                       <Input
                         type="number"
                         min="0"
                         value={newVariant.low_stock_threshold}
                         onChange={(e) => setNewVariant({ ...newVariant, low_stock_threshold: parseInt(e.target.value) || 10 })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs flex items-center gap-1">
+                        <Package className="h-3 w-3 text-blue-500" />
+                        Reorder Point
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={newVariant.reorder_point}
+                        onChange={(e) => setNewVariant({ ...newVariant, reorder_point: parseInt(e.target.value) || 20 })}
                       />
                     </div>
                   </div>
@@ -321,76 +388,169 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                 </div>
               )}
 
-              {product.variants && product.variants.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Variant</TableHead>
-                      <TableHead>SKU</TableHead>
-                      <TableHead className="text-center">Stock</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {product.variants.map((variant) => (
-                      <TableRow key={variant.id}>
-                        <TableCell className="font-medium">{variant.variant_name}</TableCell>
-                        <TableCell className="text-muted-foreground font-mono text-sm">
-                          {variant.sku || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleVariantStockUpdate(variant, Math.max(0, (variant.stock_quantity ?? 0) - 1))}
-                            >
-                              -
-                            </Button>
-                            <span className="w-12 text-center font-medium">{variant.stock_quantity ?? 0}</span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleVariantStockUpdate(variant, (variant.stock_quantity ?? 0) + 1)}
-                            >
-                              +
-                            </Button>
+              {variants && variants.length > 0 ? (
+                <div className="space-y-3">
+                  {variants.map((variant) => (
+                    <div key={variant.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-start gap-4">
+                        {/* Variant Image */}
+                        <div className="relative group">
+                          <div className="h-20 w-20 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
+                            {variant.image_url ? (
+                              <img 
+                                src={variant.image_url} 
+                                alt={variant.variant_name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : product.image_url ? (
+                              <img 
+                                src={product.image_url} 
+                                alt={variant.variant_name}
+                                className="h-full w-full object-cover opacity-50"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <ImageIcon className="h-6 w-6 text-muted-foreground/50" />
+                              </div>
+                            )}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Variant</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{variant.variant_name}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteVariant(variant.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            className="absolute -bottom-2 -right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => {
+                              setSelectedVariantForUpload(variant.id);
+                              variantFileInputRef.current?.click();
+                            }}
+                            disabled={uploadingVariantId === variant.id}
+                          >
+                            {uploadingVariantId === variant.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Upload className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+
+                        {/* Variant Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-medium">{variant.variant_name}</h5>
+                            {variant.sku && (
+                              <Badge variant="outline" className="text-xs font-mono">
+                                {variant.sku}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3">
+                            {/* Stock */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground">Stock</Label>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleVariantStockUpdate(variant, Math.max(0, (variant.stock_quantity ?? 0) - 1))}
+                                >
+                                  -
+                                </Button>
+                                <Input
+                                  type="number"
+                                  value={variant.stock_quantity ?? 0}
+                                  onChange={(e) => handleVariantStockUpdate(variant, parseInt(e.target.value) || 0)}
+                                  className="h-7 w-16 text-center"
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => handleVariantStockUpdate(variant, (variant.stock_quantity ?? 0) + 1)}
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Alert Point */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                Alert
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={variant.low_stock_threshold ?? 10}
+                                onChange={(e) => handleVariantThresholdUpdate(variant.id, 'low_stock_threshold', parseInt(e.target.value) || 0)}
+                                className="h-7"
+                              />
+                            </div>
+
+                            {/* Reorder Point */}
+                            <div className="space-y-1">
+                              <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Package className="h-3 w-3 text-blue-500" />
+                                Reorder
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={variant.reorder_point ?? 20}
+                                onChange={(e) => handleVariantThresholdUpdate(variant.id, 'reorder_point', parseInt(e.target.value) || 0)}
+                                className="h-7"
+                              />
+                            </div>
+
+                            {/* Delete */}
+                            <div className="flex items-end">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Variant</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{variant.variant_name}"?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteVariant(variant.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No variants added yet. Add variants to track inventory.
                 </p>
               )}
+
+              {/* Hidden file input for variant images */}
+              <input
+                ref={variantFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (selectedVariantForUpload) {
+                    handleVariantImageUpload(e, selectedVariantForUpload);
+                  }
+                }}
+              />
             </div>
           </div>
         </div>
@@ -410,7 +570,7 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Product</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete "{product.name}"? This will also delete all variants. This action cannot be undone.
+                  Are you sure you want to delete "{product.name}"? This will also delete all variants.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

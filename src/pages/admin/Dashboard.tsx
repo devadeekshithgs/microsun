@@ -5,6 +5,7 @@ import OrdersPage from './Orders';
 import ClientsPage from './Clients';
 import ProductsPage from './Products';
 import InventoryPage from './Inventory';
+import WorkersPage from './Workers';
 import { AdminTabNav } from '@/components/admin/Sidebar';
 
 export default function AdminDashboard() {
@@ -19,6 +20,7 @@ export default function AdminDashboard() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="inventory" element={<InventoryPage />} />
+          <Route path="workers" element={<WorkersPage />} />
         </Routes>
       </main>
     </div>
