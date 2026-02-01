@@ -41,21 +41,21 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6">
+      <div className="flex h-20 items-center justify-between">
         {/* Left side - Logo first, then menu button on mobile */}
-        <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <img src={microsunLogo} alt="MicroSun" className="h-10 w-auto" />
+        <div className="flex items-center gap-4 ml-4 md:ml-6">
+          <Link to="/" className="flex items-center shrink-0">
+            <img src={microsunLogo} alt="MicroSun" className="h-16 md:h-20 w-auto" />
           </Link>
           {showMenuButton && (
             <Button variant="ghost" size="icon" onClick={onMenuClick} className="md:hidden shrink-0">
-              <Menu className="h-5 w-5" />
+              <Menu className="h-6 w-6" />
             </Button>
           )}
         </div>
 
         {/* Right side - Notifications and User */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mr-4 md:mr-6">
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
             <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground">
