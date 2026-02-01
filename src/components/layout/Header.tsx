@@ -43,9 +43,9 @@ export function Header({ onMenuClick, showMenuButton = false }: HeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-20 items-center justify-between">
         {/* Left side - Logo first, then menu button on mobile */}
-        <div className="flex items-center gap-4 ml-4 md:ml-6">
+        <div className="flex items-center gap-4 ml-4 md:ml-6 pt-2">
           <Link to="/" className="flex items-center shrink-0">
-            <img src={microsunLogo} alt="MicroSun" className="h-16 md:h-20 w-auto" />
+            <img src={microsunLogo} alt="MicroSun" className="h-16 md:h-20 w-auto mt-1" />
           </Link>
           {showMenuButton && (
             <Button variant="ghost" size="icon" onClick={onMenuClick} className="md:hidden shrink-0">
