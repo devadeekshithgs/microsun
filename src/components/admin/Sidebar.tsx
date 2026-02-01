@@ -6,6 +6,7 @@ import {
   Users,
   Package,
   Warehouse,
+  HardHat,
 } from 'lucide-react';
 
 const navItems = [
@@ -14,6 +15,7 @@ const navItems = [
   { icon: Users, label: 'Clients', href: '/admin/clients' },
   { icon: Package, label: 'Products', href: '/admin/products' },
   { icon: Warehouse, label: 'Inventory', href: '/admin/inventory' },
+  { icon: HardHat, label: 'Workers', href: '/admin/workers' },
 ];
 
 export function AdminTabNav() {

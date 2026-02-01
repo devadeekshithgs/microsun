@@ -222,9 +222,11 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          image_url: string | null
           is_active: boolean | null
           low_stock_threshold: number | null
           product_id: string
+          reorder_point: number | null
           sku: string | null
           stock_quantity: number | null
           updated_at: string | null
@@ -233,9 +235,11 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           low_stock_threshold?: number | null
           product_id: string
+          reorder_point?: number | null
           sku?: string | null
           stock_quantity?: number | null
           updated_at?: string | null
@@ -244,9 +248,11 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean | null
           low_stock_threshold?: number | null
           product_id?: string
+          reorder_point?: number | null
           sku?: string | null
           stock_quantity?: number | null
           updated_at?: string | null
@@ -378,6 +384,121 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      worker_assignments: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          order_id: string | null
+          priority: string | null
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string | null
+          worker_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          order_id?: string | null
+          priority?: string | null
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string | null
+          worker_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          order_id?: string | null
+          priority?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_assignments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_assignments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_output: {
+        Row: {
+          assignment_id: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          quantity_produced: number
+          recorded_at: string
+          variant_id: string | null
+          worker_id: string
+        }
+        Insert: {
+          assignment_id?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          quantity_produced?: number
+          recorded_at?: string
+          variant_id?: string | null
+          worker_id: string
+        }
+        Update: {
+          assignment_id?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          quantity_produced?: number
+          recorded_at?: string
+          variant_id?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_output_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "worker_assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_output_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_output_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
