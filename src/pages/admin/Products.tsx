@@ -5,11 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Search, MoreVertical, Pencil, Trash2, Package, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Package, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
 import { useProducts, useCategories, useDeleteProduct, useDeleteVariant, useDeleteCategory, type Product, type ProductVariant, type Category } from '@/hooks/useProducts';
 import { ProductDialog } from '@/components/admin/ProductDialog';
 import { VariantDialog } from '@/components/admin/VariantDialog';
@@ -108,11 +107,11 @@ export default function ProductsPage() {
   const getStockBadge = (variant: ProductVariant) => {
     const status = getStockStatus(variant.stock_quantity ?? 0, variant.low_stock_threshold ?? 10);
     const config = {
-      in_stock: { label: 'In Stock', variant: 'default' as const },
-      low_stock: { label: 'Low Stock', variant: 'secondary' as const },
-      out_of_stock: { label: 'Out of Stock', variant: 'destructive' as const },
+      in_stock: { label: 'In Stock', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
+      low_stock: { label: 'Low Stock', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
+      out_of_stock: { label: 'Out of Stock', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
     };
-    return <Badge variant={config[status].variant}>{config[status].label}</Badge>;
+    return <Badge className={config[status].className}>{config[status].label}</Badge>;
   };
   
   const totalProducts = products?.length || 0;
@@ -122,19 +121,19 @@ export default function ProductsPage() {
   
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground">Manage product catalog and variants.</p>
         </div>
-        <Button onClick={handleAddProduct}>
-          <Plus className="mr-2 h-4 w-4" />
+        <Button size="lg" className="h-12 px-6" onClick={handleAddProduct}>
+          <Plus className="mr-2 h-5 w-5" />
           Add Product
         </Button>
       </div>
       
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Products</CardTitle>
@@ -165,7 +164,7 @@ export default function ProductsPage() {
       </div>
       
       <Tabs defaultValue="products" className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
         </TabsList>
@@ -173,24 +172,24 @@ export default function ProductsPage() {
         {/* Products Tab */}
         <TabsContent value="products" className="space-y-4">
           <Card>
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col gap-4">
                 <div>
                   <CardTitle>Product Catalog</CardTitle>
                   <CardDescription>Add, edit, and manage products</CardDescription>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:flex-none">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search products..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 sm:w-[200px]"
+                      className="pl-10 h-12"
                     />
                   </div>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="sm:w-[180px]">
+                    <SelectTrigger className="sm:w-[200px] h-12">
                       <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
@@ -209,30 +208,52 @@ export default function ProductsPage() {
               {productsLoading ? (
                 <p className="text-sm text-muted-foreground text-center py-12">Loading products...</p>
               ) : filteredProducts.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-12">
-                  {searchQuery || categoryFilter !== 'all' 
-                    ? 'No products match your search criteria.' 
-                    : 'No products yet. Add products to start building your catalog.'}
-                </p>
+                <div className="text-center py-12">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground">
+                    {searchQuery || categoryFilter !== 'all' 
+                      ? 'No products match your search.' 
+                      : 'No products yet.'}
+                  </p>
+                  <Button className="mt-4" onClick={handleAddProduct}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Your First Product
+                  </Button>
+                </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {filteredProducts.map((product) => (
                     <Collapsible
                       key={product.id}
                       open={expandedProducts.has(product.id)}
                       onOpenChange={() => toggleProductExpanded(product.id)}
                     >
-                      <div className="border rounded-lg">
-                        <div className="flex items-center justify-between p-4 hover:bg-muted/50">
-                          <CollapsibleTrigger className="flex items-center gap-3 flex-1 text-left">
-                            {expandedProducts.has(product.id) ? (
-                              <ChevronDown className="h-4 w-4" />
+                      <div className="border rounded-xl overflow-hidden">
+                        <div className="flex items-center gap-4 p-4 hover:bg-muted/50">
+                          {/* Product Image */}
+                          <div className="h-16 w-16 rounded-lg bg-muted overflow-hidden shrink-0">
+                            {product.image_url ? (
+                              <img 
+                                src={product.image_url} 
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
-                              <ChevronRight className="h-4 w-4" />
+                              <div className="h-full w-full flex items-center justify-center">
+                                <Package className="h-8 w-8 text-muted-foreground/50" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          <CollapsibleTrigger className="flex items-center gap-3 flex-1 text-left min-w-0">
+                            {expandedProducts.has(product.id) ? (
+                              <ChevronDown className="h-5 w-5 shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium truncate">{product.name}</span>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-lg truncate">{product.name}</span>
                                 {!product.is_active && (
                                   <Badge variant="secondary">Inactive</Badge>
                                 )}
@@ -244,101 +265,100 @@ export default function ProductsPage() {
                               </div>
                             </div>
                           </CollapsibleTrigger>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditProduct(product)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit Product
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleAddVariant(product.id)}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Variant
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteConfirm('product', product.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Product
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          
+                          {/* Direct Edit Buttons */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="h-11 px-4"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditProduct(product);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              className="h-11 px-4"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddVariant(product.id);
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Variant
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-11 w-11 text-destructive hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteConfirm('product', product.id);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                         
                         <CollapsibleContent>
-                          <div className="border-t px-4 py-3 bg-muted/30">
+                          <div className="border-t px-4 py-4 bg-muted/30">
                             {product.description && (
-                              <p className="text-sm text-muted-foreground mb-3">{product.description}</p>
+                              <p className="text-sm text-muted-foreground mb-4">{product.description}</p>
                             )}
                             {product.variants && product.variants.length > 0 ? (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Variant</TableHead>
-                                    <TableHead>SKU</TableHead>
-                                    <TableHead className="text-right">Stock</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="w-[50px]"></TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {product.variants.map((variant) => (
-                                    <TableRow key={variant.id}>
-                                      <TableCell className="font-medium">
-                                        {variant.variant_name}
+                              <div className="space-y-2">
+                                {product.variants.map((variant) => (
+                                  <div
+                                    key={variant.id}
+                                    className="flex items-center justify-between p-4 bg-background rounded-lg border"
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-medium">{variant.variant_name}</span>
                                         {!variant.is_active && (
-                                          <Badge variant="secondary" className="ml-2">Inactive</Badge>
+                                          <Badge variant="secondary">Inactive</Badge>
                                         )}
-                                      </TableCell>
-                                      <TableCell className="text-muted-foreground">
-                                        {variant.sku || '-'}
-                                      </TableCell>
-                                      <TableCell className="text-right">
-                                        {variant.stock_quantity}
-                                      </TableCell>
-                                      <TableCell>
-                                        {getStockBadge(variant)}
-                                      </TableCell>
-                                      <TableCell>
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                              <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => handleEditVariant(product.id, variant)}>
-                                              <Pencil className="mr-2 h-4 w-4" />
-                                              Edit
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                              className="text-destructive"
-                                              onClick={() => handleDeleteConfirm('variant', variant.id)}
-                                            >
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              Delete
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
+                                      </div>
+                                      <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                                        {variant.sku && <span>SKU: {variant.sku}</span>}
+                                        <span>Stock: {variant.stock_quantity}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      {getStockBadge(variant)}
+                                      <Button
+                                        variant="outline"
+                                        size="lg"
+                                        className="h-10"
+                                        onClick={() => handleEditVariant(product.id, variant)}
+                                      >
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-10 w-10 text-destructive hover:text-destructive"
+                                        onClick={() => handleDeleteConfirm('variant', variant.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             ) : (
-                              <div className="text-sm text-muted-foreground text-center py-4">
-                                No variants. 
-                                <Button 
-                                  variant="link" 
-                                  className="px-1"
-                                  onClick={() => handleAddVariant(product.id)}
-                                >
-                                  Add a variant
+                              <div className="text-center py-6">
+                                <p className="text-sm text-muted-foreground mb-3">No variants yet</p>
+                                <Button onClick={() => handleAddVariant(product.id)}>
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Add Variant
                                 </Button>
                               </div>
                             )}
@@ -361,8 +381,8 @@ export default function ProductsPage() {
                 <CardTitle>Categories</CardTitle>
                 <CardDescription>Organize products into categories</CardDescription>
               </div>
-              <Button onClick={handleAddCategory}>
-                <Plus className="mr-2 h-4 w-4" />
+              <Button size="lg" className="h-12 px-6" onClick={handleAddCategory}>
+                <Plus className="mr-2 h-5 w-5" />
                 Add Category
               </Button>
             </CardHeader>
@@ -370,70 +390,61 @@ export default function ProductsPage() {
               {categoriesLoading ? (
                 <p className="text-sm text-muted-foreground text-center py-12">Loading categories...</p>
               ) : categories?.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-12">
-                  No categories yet. Add categories to organize your products.
-                </p>
+                <div className="text-center py-12">
+                  <FolderOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground">No categories yet</p>
+                  <Button className="mt-4" onClick={handleAddCategory}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add First Category
+                  </Button>
+                </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-center">Products</TableHead>
-                      <TableHead className="text-center">Order</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {categories?.map((category) => {
-                      const productCount = products?.filter(p => p.category_id === category.id).length || 0;
-                      return (
-                        <TableRow key={category.id}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                              {category.name}
+                <div className="space-y-3">
+                  {categories?.map((category) => {
+                    const productCount = products?.filter(p => p.category_id === category.id).length || 0;
+                    return (
+                      <div
+                        key={category.id}
+                        className="flex items-center justify-between p-4 border rounded-xl hover:bg-muted/50"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <FolderOpen className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-lg">{category.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {productCount} product(s) • Order: {category.display_order}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                            {category.description || '-'}
-                          </TableCell>
-                          <TableCell className="text-center">{productCount}</TableCell>
-                          <TableCell className="text-center">{category.display_order}</TableCell>
-                          <TableCell>
-                            <Badge variant={category.is_active ? 'default' : 'secondary'}>
-                              {category.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditCategory(category)}>
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteConfirm('category', category.id)}
-                                  disabled={productCount > 0}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant={category.is_active ? 'default' : 'secondary'}>
+                            {category.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="lg"
+                            className="h-11"
+                            onClick={() => handleEditCategory(category)}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteConfirm('category', category.id)}
+                            disabled={productCount > 0}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -471,10 +482,10 @@ export default function ProductsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-12">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={executeDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-12"
             >
               Delete
             </AlertDialogAction>
