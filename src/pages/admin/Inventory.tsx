@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Package, AlertTriangle, Plus, Minus, Check, X } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Search, Package, AlertTriangle, Plus, Minus, Check, X, LayoutGrid, List } from 'lucide-react';
 import { useProducts, useCategories, useUpdateVariant, type ProductVariant } from '@/hooks/useProducts';
 import { getStockStatus } from '@/lib/types';
 import { toast } from 'sonner';
@@ -16,14 +17,79 @@ interface InventoryItemWithProduct extends ProductVariant {
   productId: string;
 }
 
-interface StockEditorProps {
-  item: InventoryItemWithProduct;
-  onUpdate: (id: string, newStock: number) => void;
+type ViewMode = 'grid' | 'list';
+
+// Inline editable stock input component
+function EditableStock({ 
+  value, 
+  onSave, 
+  isUpdating 
+}: { 
+  value: number; 
+  onSave: (newValue: number) => void; 
   isUpdating: boolean;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value.toString());
+
+  const handleSave = () => {
+    const newValue = parseInt(editValue) || 0;
+    onSave(newValue);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditValue(value.toString());
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSave();
+    if (e.key === 'Escape') handleCancel();
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="w-20 h-10 text-center"
+          autoFocus
+        />
+        <Button size="icon" className="h-10 w-10" onClick={handleSave} disabled={isUpdating}>
+          <Check className="h-4 w-4" />
+        </Button>
+        <Button size="icon" variant="outline" className="h-10 w-10" onClick={handleCancel}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setIsEditing(true)}
+      className="text-2xl font-bold tabular-nums hover:bg-muted px-3 py-1 rounded-lg transition-colors cursor-pointer min-w-[60px] text-center"
+    >
+      {value}
+    </button>
+  );
 }
 
-function StockEditor({ item, onUpdate, isUpdating }: StockEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
+// Stock editor for grid view with +/- buttons
+function StockEditorGrid({ 
+  item, 
+  onUpdate, 
+  isUpdating 
+}: { 
+  item: InventoryItemWithProduct; 
+  onUpdate: (id: string, newStock: number) => void; 
+  isUpdating: boolean;
+}) {
+  const [isAdding, setIsAdding] = useState(false);
   const [addQuantity, setAddQuantity] = useState(0);
   const currentStock = item.stock_quantity ?? 0;
 
@@ -36,35 +102,31 @@ function StockEditor({ item, onUpdate, isUpdating }: StockEditorProps) {
     if (addQuantity > 0) {
       onUpdate(item.id, currentStock + addQuantity);
       setAddQuantity(0);
-      setIsEditing(false);
+      setIsAdding(false);
     }
-  };
-
-  const cancelEdit = () => {
-    setAddQuantity(0);
-    setIsEditing(false);
   };
 
   return (
     <div className="space-y-3">
-      {/* Quick +/- Controls */}
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
           size="icon"
-          className="h-12 w-12 rounded-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          className="h-12 w-12 rounded-full border-destructive/50 text-destructive hover:bg-destructive/10"
           onClick={() => handleQuickAdjust(-1)}
           disabled={currentStock === 0 || isUpdating}
         >
           <Minus className="h-5 w-5" />
         </Button>
-        <div className="min-w-[80px] text-center">
-          <span className="text-2xl font-bold tabular-nums">{currentStock}</span>
-        </div>
+        <EditableStock 
+          value={currentStock} 
+          onSave={(newVal) => onUpdate(item.id, newVal)} 
+          isUpdating={isUpdating}
+        />
         <Button
           variant="outline"
           size="icon"
-          className="h-12 w-12 rounded-full border-green-500/50 text-green-600 hover:bg-green-50 hover:text-green-700"
+          className="h-12 w-12 rounded-full border-green-500/50 text-green-600 hover:bg-green-50"
           onClick={() => handleQuickAdjust(1)}
           disabled={isUpdating}
         >
@@ -72,12 +134,11 @@ function StockEditor({ item, onUpdate, isUpdating }: StockEditorProps) {
         </Button>
       </div>
 
-      {/* Add Quantity Section */}
-      {!isEditing ? (
+      {!isAdding ? (
         <Button
           variant="outline"
-          className="w-full h-11 text-green-600 border-green-500/50 hover:bg-green-50 hover:text-green-700"
-          onClick={() => setIsEditing(true)}
+          className="w-full h-11 text-green-600 border-green-500/50 hover:bg-green-50"
+          onClick={() => setIsAdding(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Quantity
@@ -105,7 +166,7 @@ function StockEditor({ item, onUpdate, isUpdating }: StockEditorProps) {
             size="icon"
             variant="outline"
             className="h-11 w-11"
-            onClick={cancelEdit}
+            onClick={() => { setAddQuantity(0); setIsAdding(false); }}
           >
             <X className="h-5 w-5" />
           </Button>
@@ -119,6 +180,7 @@ export default function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [stockFilter, setStockFilter] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   
   const { data: products, isLoading } = useProducts();
   const { data: categories } = useCategories();
@@ -179,9 +241,31 @@ export default function InventoryPage() {
   
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-        <p className="text-muted-foreground">Track stock levels and manage inventory.</p>
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
+          <p className="text-muted-foreground">Track stock levels and manage inventory.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="lg"
+            className="h-12"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-5 w-5 mr-2" />
+            List
+          </Button>
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="lg"
+            className="h-12"
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid className="h-5 w-5 mr-2" />
+            Grid
+          </Button>
+        </div>
       </div>
       
       {/* Stats */}
@@ -230,7 +314,7 @@ export default function InventoryPage() {
           <div className="flex flex-col gap-4">
             <div>
               <CardTitle>Stock Overview</CardTitle>
-              <CardDescription>Update inventory levels directly</CardDescription>
+              <CardDescription>Click on any stock number to edit it directly</CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -281,11 +365,81 @@ export default function InventoryPage() {
                   : 'No inventory data yet.'}
               </p>
             </div>
+          ) : viewMode === 'list' ? (
+            /* List/Matrix View */
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[80px]">Image</TableHead>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Variant</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-center w-[200px]">Stock (Click to Edit)</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredItems.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden">
+                          {item.productImage ? (
+                            <img 
+                              src={item.productImage} 
+                              alt={item.productName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center">
+                              <Package className="h-6 w-6 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">{item.productName}</TableCell>
+                      <TableCell>{item.variant_name}</TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-sm">{item.sku || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.categoryName}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={() => handleStockUpdate(item.id, Math.max(0, (item.stock_quantity ?? 0) - 1))}
+                            disabled={item.stock_quantity === 0 || updateVariant.isPending}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <EditableStock 
+                            value={item.stock_quantity ?? 0} 
+                            onSave={(newVal) => handleStockUpdate(item.id, newVal)} 
+                            isUpdating={updateVariant.isPending}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-10 w-10"
+                            onClick={() => handleStockUpdate(item.id, (item.stock_quantity ?? 0) + 1)}
+                            disabled={updateVariant.isPending}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStockBadge(item)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
+            /* Grid View */
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredItems.map((item) => (
                 <Card key={item.id} className="overflow-hidden">
-                  {/* Product Image */}
                   <div className="aspect-square bg-muted relative">
                     {item.productImage ? (
                       <img 
@@ -303,7 +457,6 @@ export default function InventoryPage() {
                     </div>
                   </div>
                   
-                  {/* Product Info */}
                   <CardContent className="p-4 space-y-4">
                     <div>
                       <h3 className="font-semibold text-lg line-clamp-1">{item.productName}</h3>
@@ -319,8 +472,7 @@ export default function InventoryPage() {
                       </div>
                     </div>
                     
-                    {/* Stock Editor */}
-                    <StockEditor 
+                    <StockEditorGrid 
                       item={item} 
                       onUpdate={handleStockUpdate}
                       isUpdating={updateVariant.isPending}
