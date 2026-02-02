@@ -23,6 +23,7 @@ const WorkerDashboard = lazy(() => import("@/pages/worker/Dashboard"));
 
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const ProfilePage = lazy(() => import("@/pages/Profile"));
+const DebugPage = lazy(() => import("@/pages/Debug"));
 
 const queryClient = new QueryClient();
 
@@ -123,6 +124,7 @@ const App = () => (
                 } />
 
                 {/* Catch-all */}
+                <Route path="/debug" element={<DebugPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
