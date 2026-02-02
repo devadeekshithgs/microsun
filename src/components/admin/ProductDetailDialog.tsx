@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Upload, Trash2, Edit2, Save, X, Plus, Package, ImageIcon, Loader2, AlertTriangle } from 'lucide-react';
 import { useCategories, useUpdateProduct, useDeleteProduct, useCreateVariant, useUpdateVariant, useDeleteVariant, type Product, type ProductVariant } from '@/hooks/useProducts';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/external-client';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
