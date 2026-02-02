@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import microsunLogo from '@/assets/microsun-logo.png';
+import microsunLogo from '@/assets/microsun-logo.webp';
 import { companyNameSchema, phoneSchema } from '@/lib/validations';
 
 // Schema for completing profile

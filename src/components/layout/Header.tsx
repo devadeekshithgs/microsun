@@ -4,7 +4,7 @@ import { NotificationsPopover } from '@/components/layout/NotificationsPopover';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
-import microsunLogo from '@/assets/microsun-logo.png';
+import microsunLogo from '@/assets/microsun-logo.webp';
 interface HeaderProps {
   onMenuClick?: () => void;
   showMenuButton?: boolean;

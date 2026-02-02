@@ -3,7 +3,7 @@ import { Clock, LogOut, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
-import microsunLogo from '@/assets/microsun-logo.png';
+import microsunLogo from '@/assets/microsun-logo.webp';
 
 export default function PendingApproval() {
   const { profile, signOut, refreshProfile, isApproved } = useAuth();

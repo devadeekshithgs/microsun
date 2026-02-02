@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import microsunLogo from '@/assets/microsun-logo.png';
+import microsunLogo from '@/assets/microsun-logo.webp';
 import { registerSchema, type RegisterFormValues } from '@/lib/validations';
 
 export default function Register() {

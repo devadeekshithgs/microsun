@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import microsunLogo from '@/assets/microsun-logo.png';
+import microsunLogo from '@/assets/microsun-logo.webp';
 import { nameSchema, emailSchema, phoneSchema, passwordSchema } from '@/lib/validations';
 
 // Worker registration schema

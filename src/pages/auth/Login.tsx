@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import microsunLogo from '@/assets/microsun-logo.png';
+import microsunLogo from '@/assets/microsun-logo.webp';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
 
 export default function Login() {
@@ -71,7 +71,7 @@ export default function Login() {
           redirectTo: `${window.location.origin}/`,
         },
       });
-      
+
       if (error) {
         toast.error(error.message);
         setGoogleLoading(false);
