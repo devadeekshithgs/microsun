@@ -242,7 +242,7 @@ export default function ProductsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[80px]">Image</TableHead>
+                        <TableHead className="w-[140px]">Image</TableHead>
                         <TableHead>SKU</TableHead>
                         <TableHead>Product</TableHead>
                         <TableHead>Category</TableHead>
@@ -256,9 +256,9 @@ export default function ProductsPage() {
                         const cartQty = getCartQuantity(variant.id);
                         
                         return (
-                          <TableRow key={variant.id}>
-                            <TableCell>
-                              <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden">
+                          <TableRow key={variant.id} className="h-[120px]">
+                            <TableCell className="py-2">
+                              <div className="h-24 w-28 rounded-lg bg-muted overflow-hidden">
                                 {variant.productImage ? (
                                   <img 
                                     src={variant.productImage} 
@@ -267,7 +267,7 @@ export default function ProductsPage() {
                                   />
                                 ) : (
                                   <div className="h-full w-full flex items-center justify-center">
-                                    <Package className="h-6 w-6 text-muted-foreground/50" />
+                                    <Package className="h-10 w-10 text-muted-foreground/50" />
                                   </div>
                                 )}
                               </div>
