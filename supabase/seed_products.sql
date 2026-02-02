@@ -5,6 +5,9 @@
 -- ============================================
 
 -- Step 1: Clear existing data (run first time only)
+-- Step 1: Clear existing data (run first time only)
+DELETE FROM order_items;
+DELETE FROM orders;
 DELETE FROM product_variants;
 DELETE FROM products;
 DELETE FROM categories;
@@ -62,7 +65,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-SH-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Small Shelf', 'Compact kitchen shelf', cat_shelves, '/images/products/accessories/hook-shelf.jpg', true)
+  VALUES ('Small Shelf', 'Compact kitchen shelf', cat_shelves, '/images/products/accessories/hook-shelf.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -71,7 +74,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-SSH-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Perforated Sheet Shelf', 'Perforated sheet shelving unit', cat_shelves, '/images/products/accessories/hotpan-grid.jpg', true)
+  VALUES ('Perforated Sheet Shelf', 'Perforated sheet shelving unit', cat_shelves, '/images/products/accessories/hotpan-grid.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -86,7 +89,7 @@ BEGIN
 
   -- 4. L-Corner (1-4 steps)
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('L-Corner', 'L-shaped corner stand', cat_corner, '/images/products/corner-stands/12-inch-corner.jpg', true)
+  VALUES ('L-Corner', 'L-shaped corner stand', cat_corner, '/images/products/corner-stands/12-inch-corner.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -96,7 +99,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-LC-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('9" Corner Stand', '9 inch corner stand for kitchen storage', cat_corner, '/images/products/corner-stands/9-inch-corner.jpg', true)
+  VALUES ('9" Corner Stand', '9 inch corner stand for kitchen storage', cat_corner, '/images/products/corner-stands/9-inch-corner.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -106,7 +109,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-CS9-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Special 9" Corner Stand', 'Special 9 inch corner stand', cat_corner, '/images/products/corner-stands/9-inch-corner.jpg', true)
+  VALUES ('Special 9" Corner Stand', 'Special 9 inch corner stand', cat_corner, '/images/products/corner-stands/9-inch-corner.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -115,7 +118,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-SCS9-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('12" Corner Stand', '12 inch corner stand for kitchen storage', cat_corner, '/images/products/corner-stands/12-inch-corner.jpg', true)
+  VALUES ('12" Corner Stand', '12 inch corner stand for kitchen storage', cat_corner, '/images/products/corner-stands/12-inch-corner.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -125,7 +128,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-CS12-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Multipurpose Stand', 'Versatile multipurpose storage stand', cat_corner, '/images/products/organizers/multipurpose-organizer.jpg', true)
+  VALUES ('Multipurpose Stand', 'Versatile multipurpose storage stand', cat_corner, '/images/products/organizers/multipurpose-organizer.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -138,50 +141,50 @@ BEGIN
   -- =====================
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Fruity 5mm', 'Square fruit stand with 5mm wire', cat_fruit, '/images/products/fruit-stands/square-fruit-stand.png', true)
+  VALUES ('Square Fruity 5mm', 'Square fruit stand with 5mm wire', cat_fruit, '/images/products/fruit-stands/square-fruit-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, '2 Step', 'MS-SQF5-2S', true, '/images/products/fruit-stands/square-fruit-stand.png'),
-    (prod_id, '3 Step', 'MS-SQF5-3S', true, '/images/products/fruit-stands/square-fruit-stand.png'),
-    (prod_id, '4 Step', 'MS-SQF5-4S', true, '/images/products/fruit-stands/square-fruit-stand.png');
+    (prod_id, '2 Step', 'MS-SQF5-2S', true, '/images/products/fruit-stands/square-fruit-stand.webp'),
+    (prod_id, '3 Step', 'MS-SQF5-3S', true, '/images/products/fruit-stands/square-fruit-stand.webp'),
+    (prod_id, '4 Step', 'MS-SQF5-4S', true, '/images/products/fruit-stands/square-fruit-stand.webp');
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Fruity 8mm', 'Square fruit stand with 8mm wire', cat_fruit, '/images/products/fruit-stands/square-fruit-stand.png', true)
+  VALUES ('Square Fruity 8mm', 'Square fruit stand with 8mm wire', cat_fruit, '/images/products/fruit-stands/square-fruit-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, '2 Step', 'MS-SQF8-2S', true, '/images/products/fruit-stands/square-fruit-stand.png'),
-    (prod_id, '3 Step', 'MS-SQF8-3S', true, '/images/products/fruit-stands/square-fruit-stand.png'),
-    (prod_id, '4 Step', 'MS-SQF8-4S', true, '/images/products/fruit-stands/square-fruit-stand.png');
+    (prod_id, '2 Step', 'MS-SQF8-2S', true, '/images/products/fruit-stands/square-fruit-stand.webp'),
+    (prod_id, '3 Step', 'MS-SQF8-3S', true, '/images/products/fruit-stands/square-fruit-stand.webp'),
+    (prod_id, '4 Step', 'MS-SQF8-4S', true, '/images/products/fruit-stands/square-fruit-stand.webp');
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Fruity 5mm', 'Round fruit stand with 5mm wire', cat_fruit, '/images/products/fruit-stands/round-fruit-stand-heavy.png', true)
+  VALUES ('Round Fruity 5mm', 'Round fruit stand with 5mm wire', cat_fruit, '/images/products/fruit-stands/round-fruit-stand-heavy.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, '2 Step', 'MS-RDF5-2S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.png'),
-    (prod_id, '3 Step', 'MS-RDF5-3S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.png'),
-    (prod_id, '4 Step', 'MS-RDF5-4S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.png');
+    (prod_id, '2 Step', 'MS-RDF5-2S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.webp'),
+    (prod_id, '3 Step', 'MS-RDF5-3S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.webp'),
+    (prod_id, '4 Step', 'MS-RDF5-4S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.webp');
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Fruity 8mm', 'Round fruit stand with 8mm wire', cat_fruit, '/images/products/fruit-stands/round-fruit-stand-heavy.png', true)
+  VALUES ('Round Fruity 8mm', 'Round fruit stand with 8mm wire', cat_fruit, '/images/products/fruit-stands/round-fruit-stand-heavy.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, '2 Step', 'MS-RDF8-2S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.png'),
-    (prod_id, '3 Step', 'MS-RDF8-3S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.png'),
-    (prod_id, '4 Step', 'MS-RDF8-4S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.png');
+    (prod_id, '2 Step', 'MS-RDF8-2S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.webp'),
+    (prod_id, '3 Step', 'MS-RDF8-3S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.webp'),
+    (prod_id, '4 Step', 'MS-RDF8-4S', true, '/images/products/fruit-stands/round-fruit-stand-heavy.webp');
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Cycle Fruity', 'Square cycle-style fruit stand', cat_fruit, '/images/products/fruit-stands/square-fruit-stand.png', true)
+  VALUES ('Square Cycle Fruity', 'Square cycle-style fruit stand', cat_fruit, '/images/products/fruit-stands/square-fruit-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
     (prod_id, 'Standard', 'MS-SQCF-STD', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Cycle Fruity', 'Round cycle-style fruit stand', cat_fruit, '/images/products/fruit-stands/round-fruit-stand-heavy.png', true)
+  VALUES ('Round Cycle Fruity', 'Round cycle-style fruit stand', cat_fruit, '/images/products/fruit-stands/round-fruit-stand-heavy.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -193,7 +196,7 @@ BEGIN
 
   -- 15. Cylinder Trolley
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Cylinder Trolley', 'Gas cylinder trolley', cat_trolleys, '/images/products/trolleys/cylinder-trolley.jpg', true)
+  VALUES ('Cylinder Trolley', 'Gas cylinder trolley', cat_trolleys, '/images/products/trolleys/cylinder-trolley.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -201,7 +204,7 @@ BEGIN
 
   -- 16. Square Pipe Fruit Trolley (2-4 steps)
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Pipe Fruit Trolley', 'Fruit trolley with square pipe frame', cat_trolleys, '/images/products/trolleys/square-pipe-trolley.jpg', true)
+  VALUES ('Square Pipe Fruit Trolley', 'Fruit trolley with square pipe frame', cat_trolleys, '/images/products/trolleys/square-pipe-trolley.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -210,7 +213,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-SPFT-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Pipe Fruit Trolley', 'Fruit trolley with round pipe frame', cat_trolleys, '/images/products/trolleys/square-pipe-trolley.jpg', true)
+  VALUES ('Round Pipe Fruit Trolley', 'Fruit trolley with round pipe frame', cat_trolleys, '/images/products/trolleys/square-pipe-trolley.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -219,7 +222,7 @@ BEGIN
     (prod_id, '4 Step', 'MS-RPFT-4S', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Detachable Pipe Trolley', 'Detachable pipe trolley', cat_trolleys, '/images/products/trolleys/cylinder-trolley.jpg', true)
+  VALUES ('Detachable Pipe Trolley', 'Detachable pipe trolley', cat_trolleys, '/images/products/trolleys/cylinder-trolley.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -233,7 +236,7 @@ BEGIN
 
   -- 19. Filter Stand (baby, small, med, big)
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Filter Stand', 'Filter storage stand', cat_organizers, '/images/products/organizers/glass-stand.jpg', true)
+  VALUES ('Filter Stand', 'Filter storage stand', cat_organizers, '/images/products/organizers/glass-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -243,7 +246,7 @@ BEGIN
     (prod_id, 'Big', 'MS-FS-L', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Water Filter Stand', 'Water filter storage stand', cat_organizers, '/images/products/organizers/glass-stand.jpg', true)
+  VALUES ('Water Filter Stand', 'Water filter storage stand', cat_organizers, '/images/products/organizers/glass-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -253,7 +256,7 @@ BEGIN
     (prod_id, 'Big', 'MS-WFS-L', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Table Organiser', 'Table and desk organizer', cat_organizers, '/images/products/organizers/multipurpose-organizer.jpg', true)
+  VALUES ('Table Organiser', 'Table and desk organizer', cat_organizers, '/images/products/organizers/multipurpose-organizer.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -261,7 +264,7 @@ BEGIN
     (prod_id, 'Heavy', 'MS-TO-H', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Banana Stand', 'Banana hanging stand', cat_organizers, '/images/products/organizers/banana-stand.png', true)
+  VALUES ('Banana Stand', 'Banana hanging stand', cat_organizers, '/images/products/organizers/banana-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -269,7 +272,7 @@ BEGIN
     (prod_id, '8mm', 'MS-BS-8', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Half D Stand', 'Half D shaped stand', cat_organizers, '/images/products/accessories/hook-shelf.jpg', true)
+  VALUES ('Half D Stand', 'Half D shaped stand', cat_organizers, '/images/products/accessories/hook-shelf.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -281,15 +284,15 @@ BEGIN
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, 'Standard', 'MS-SR-STD', true, '/images/products/organizers/spice-rack.jpg');
+    (prod_id, 'Standard', 'MS-SR-STD', true, '/images/products/organizers/spice-rack.webp');
 
   -- 25. Perfume Rack
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Perfume Rack', 'Perfume display rack', cat_organizers, '/images/products/organizers/perfume-stand.png', true)
+  VALUES ('Perfume Rack', 'Perfume display rack', cat_organizers, '/images/products/organizers/perfume-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, 'Standard', 'MS-PR-STD', true, '/images/products/organizers/perfume-stand.png');
+    (prod_id, 'Standard', 'MS-PR-STD', true, '/images/products/organizers/perfume-stand.webp');
 
   -- =====================
   -- PLATE STANDS CATEGORY
@@ -297,7 +300,7 @@ BEGIN
 
   -- 26. Square Plate Stand (6, 8, 10 plates)
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Plate Stand', 'Square plate storage stand', cat_plate, '/images/products/plate-stands/square-plate-stand.jpg', true)
+  VALUES ('Square Plate Stand', 'Square plate storage stand', cat_plate, '/images/products/plate-stands/square-plate-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -306,7 +309,7 @@ BEGIN
     (prod_id, '10 Plate', 'MS-SPS-10', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Plate Stand', 'Round plate storage stand', cat_plate, '/images/products/plate-stands/square-plate-stand.jpg', true)
+  VALUES ('Round Plate Stand', 'Round plate storage stand', cat_plate, '/images/products/plate-stands/square-plate-stand.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -319,7 +322,7 @@ BEGIN
   -- =====================
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Baby Basket', 'Small baby basket', cat_baskets, '/images/products/baskets/square-tokra-no-handle.png', true)
+  VALUES ('Baby Basket', 'Small baby basket', cat_baskets, '/images/products/baskets/square-tokra-no-handle.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -327,7 +330,7 @@ BEGIN
     (prod_id, 'Big', 'MS-BB-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Tokra 5mm', 'Square basket with 5mm wire', cat_baskets, '/images/products/baskets/square-tokra-heavy.jpg', true)
+  VALUES ('Square Tokra 5mm', 'Square basket with 5mm wire', cat_baskets, '/images/products/baskets/square-tokra-heavy.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -336,7 +339,7 @@ BEGIN
 
   -- 30. Square Tokra 8mm
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Tokra 8mm', 'Square basket with 8mm wire', cat_baskets, '/images/products/baskets/square-tokra-heavy.jpg', true)
+  VALUES ('Square Tokra 8mm', 'Square basket with 8mm wire', cat_baskets, '/images/products/baskets/square-tokra-heavy.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -344,7 +347,7 @@ BEGIN
     (prod_id, 'Big (17x22)', 'MS-ST8-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Tokra 5mm', 'Round basket with 5mm wire', cat_baskets, '/images/products/baskets/round-pipe-tokra.png', true)
+  VALUES ('Round Tokra 5mm', 'Round basket with 5mm wire', cat_baskets, '/images/products/baskets/round-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -353,7 +356,7 @@ BEGIN
     (prod_id, 'Big', 'MS-RT5-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Tokra 8mm', 'Round basket with 8mm wire', cat_baskets, '/images/products/baskets/round-pipe-tokra.png', true)
+  VALUES ('Round Tokra 8mm', 'Round basket with 8mm wire', cat_baskets, '/images/products/baskets/round-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -362,7 +365,7 @@ BEGIN
     (prod_id, 'Big', 'MS-RT8-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Tray Tokra (Orange)', 'Orange tray tokra - special item', cat_baskets, '/images/products/baskets/square-tokra-no-handle.png', true)
+  VALUES ('Tray Tokra (Orange)', 'Orange tray tokra - special item', cat_baskets, '/images/products/baskets/square-tokra-no-handle.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -370,7 +373,7 @@ BEGIN
     (prod_id, 'Big', 'MS-TTO-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Wire Tray Tokra', 'SWTT series basket', cat_baskets, '/images/products/baskets/square-pipe-tokra.png', true)
+  VALUES ('Square Wire Tray Tokra', 'SWTT series basket', cat_baskets, '/images/products/baskets/square-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -380,7 +383,7 @@ BEGIN
 
   -- 35. Round Wire Tray Tokra
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Wire Tray Tokra', 'RWTT series basket', cat_baskets, '/images/products/baskets/round-pipe-tokra.png', true)
+  VALUES ('Round Wire Tray Tokra', 'RWTT series basket', cat_baskets, '/images/products/baskets/round-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -389,7 +392,7 @@ BEGIN
     (prod_id, 'Big (RWTT B)', 'MS-RWTT-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Pipe Tray Tokra', 'SPTT series basket', cat_baskets, '/images/products/baskets/square-pipe-tokra.png', true)
+  VALUES ('Square Pipe Tray Tokra', 'SPTT series basket', cat_baskets, '/images/products/baskets/square-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -398,7 +401,7 @@ BEGIN
     (prod_id, 'Big (SPTT B)', 'MS-SPTT-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Pipe Tray Tokra', 'RPTT series basket', cat_baskets, '/images/products/baskets/round-pipe-tokra.png', true)
+  VALUES ('Round Pipe Tray Tokra', 'RPTT series basket', cat_baskets, '/images/products/baskets/round-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -407,29 +410,29 @@ BEGIN
     (prod_id, 'Big (RPTT B)', 'MS-RPTT-B', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Square Pipe Tokra', 'SPT series basket', cat_baskets, '/images/products/baskets/square-pipe-tokra.png', true)
+  VALUES ('Square Pipe Tokra', 'SPT series basket', cat_baskets, '/images/products/baskets/square-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, 'Small (SPT S)', 'MS-SPT-S', true, '/images/products/baskets/square-pipe-tokra.png'),
-    (prod_id, 'Medium (SPT M)', 'MS-SPT-M', true, '/images/products/baskets/square-pipe-tokra.png'),
-    (prod_id, 'Big (SPT B)', 'MS-SPT-B', true, '/images/products/baskets/square-pipe-tokra.png');
+    (prod_id, 'Small (SPT S)', 'MS-SPT-S', true, '/images/products/baskets/square-pipe-tokra.webp'),
+    (prod_id, 'Medium (SPT M)', 'MS-SPT-M', true, '/images/products/baskets/square-pipe-tokra.webp'),
+    (prod_id, 'Big (SPT B)', 'MS-SPT-B', true, '/images/products/baskets/square-pipe-tokra.webp');
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Round Pipe Tokra', 'RPT series basket', cat_baskets, '/images/products/baskets/round-pipe-tokra.png', true)
+  VALUES ('Round Pipe Tokra', 'RPT series basket', cat_baskets, '/images/products/baskets/round-pipe-tokra.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active, image_url) VALUES
-    (prod_id, 'Small (RPT S)', 'MS-RPT-S', true, '/images/products/baskets/round-pipe-tokra.png'),
-    (prod_id, 'Medium (RPT M)', 'MS-RPT-M', true, '/images/products/baskets/round-pipe-tokra.png'),
-    (prod_id, 'Big (RPT B)', 'MS-RPT-B', true, '/images/products/baskets/round-pipe-tokra.png');
+    (prod_id, 'Small (RPT S)', 'MS-RPT-S', true, '/images/products/baskets/round-pipe-tokra.webp'),
+    (prod_id, 'Medium (RPT M)', 'MS-RPT-M', true, '/images/products/baskets/round-pipe-tokra.webp'),
+    (prod_id, 'Big (RPT B)', 'MS-RPT-B', true, '/images/products/baskets/round-pipe-tokra.webp');
 
   -- =====================
   -- RACKS CATEGORY
   -- =====================
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('2-Step Utility Rack', '2 step utility rack', cat_racks, '/images/products/racks/utility-rack.jpg', true)
+  VALUES ('2-Step Utility Rack', '2 step utility rack', cat_racks, '/images/products/racks/utility-rack.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -440,7 +443,7 @@ BEGIN
     (prod_id, '15 x 18', 'MS-UR2-15x18', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('3-Step Utility Rack', '3 step utility rack', cat_racks, '/images/products/racks/utility-rack.jpg', true)
+  VALUES ('3-Step Utility Rack', '3 step utility rack', cat_racks, '/images/products/racks/utility-rack.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -450,7 +453,7 @@ BEGIN
     (prod_id, '24 x 30', 'MS-UR3-24x30', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('4-Step Utility Rack', '4 step utility rack', cat_racks, '/images/products/racks/utility-rack.jpg', true)
+  VALUES ('4-Step Utility Rack', '4 step utility rack', cat_racks, '/images/products/racks/utility-rack.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -462,14 +465,14 @@ BEGIN
   -- =====================
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Hook Shelf', 'Shelf with hooks', cat_accessories, '/images/products/accessories/hook-shelf.jpg', true)
+  VALUES ('Hook Shelf', 'Shelf with hooks', cat_accessories, '/images/products/accessories/hook-shelf.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
     (prod_id, 'Standard', 'MS-HS-STD', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Hook Patti', 'Hook rail/patti', cat_accessories, '/images/products/accessories/hook-patti.jpg', true)
+  VALUES ('Hook Patti', 'Hook rail/patti', cat_accessories, '/images/products/accessories/hook-patti.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -478,14 +481,14 @@ BEGIN
     (prod_id, '8 Hook', 'MS-HP-8', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Half Hanger', 'Half-size hanger', cat_accessories, '/images/products/accessories/hanger.jpg', true)
+  VALUES ('Half Hanger', 'Half-size hanger', cat_accessories, '/images/products/accessories/hanger.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
     (prod_id, 'Standard', 'MS-HH-STD', true);
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Full Hanger', 'Full-size hanger', cat_accessories, '/images/products/accessories/hanger.jpg', true)
+  VALUES ('Full Hanger', 'Full-size hanger', cat_accessories, '/images/products/accessories/hanger.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -493,7 +496,7 @@ BEGIN
 
   -- 47. Hanging Ladle Cradle
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Hanging Ladle Cradle', 'Hanging cradle for ladles', cat_accessories, '/images/products/accessories/ladle-cradle.jpg', true)
+  VALUES ('Hanging Ladle Cradle', 'Hanging cradle for ladles', cat_accessories, '/images/products/accessories/ladle-cradle.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, is_active) VALUES
@@ -512,16 +515,16 @@ BEGIN
   -- Let's define a new variable locally or reuse one. I'll reuse cat_organizers as it's available.
 
   INSERT INTO products (name, description, category_id, image_url, is_active)
-  VALUES ('Microwave Stand', 'Sturdy stand for microwave oven', cat_organizers, '/images/products/microwave-stands/microwave-stand-09171.png', true)
+  VALUES ('Microwave Stand', 'Sturdy stand for microwave oven', cat_organizers, '/images/products/microwave-stands/microwave-stand-09171.webp', true)
   RETURNING id INTO prod_id;
   
   INSERT INTO product_variants (product_id, variant_name, sku, image_url, is_active) VALUES
-    (prod_id, 'Standard', 'MS-MWS-STD', '/images/products/microwave-stands/microwave-stand-09171.png', true),
-    (prod_id, 'Design A', 'MS-MWS-dA', '/images/products/microwave-stands/microwave-stand-09154.jpg', true),
-    (prod_id, 'Design B', 'MS-MWS-dB', '/images/products/microwave-stands/microwave-stand-09155.jpg', true),
-    (prod_id, 'Design C', 'MS-MWS-dC', '/images/products/microwave-stands/microwave-stand-09164.jpg', true),
-    (prod_id, 'Design D', 'MS-MWS-dD', '/images/products/microwave-stands/microwave-stand-09165.jpg', true),
-    (prod_id, 'Design E', 'MS-MWS-dE', '/images/products/microwave-stands/microwave-stand-09171.png', true);
+    (prod_id, 'Standard', 'MS-MWS-STD', '/images/products/microwave-stands/microwave-stand-09171.webp', true),
+    (prod_id, 'Design A', 'MS-MWS-dA', '/images/products/microwave-stands/microwave-stand-09154.webp', true),
+    (prod_id, 'Design B', 'MS-MWS-dB', '/images/products/microwave-stands/microwave-stand-09155.webp', true),
+    (prod_id, 'Design C', 'MS-MWS-dC', '/images/products/microwave-stands/microwave-stand-09164.webp', true),
+    (prod_id, 'Design D', 'MS-MWS-dD', '/images/products/microwave-stands/microwave-stand-09165.webp', true),
+    (prod_id, 'Design E', 'MS-MWS-dE', '/images/products/microwave-stands/microwave-stand-09171.webp', true);
 
 END $$;
 

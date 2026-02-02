@@ -54,7 +54,7 @@ function AssignTaskDialog({ worker, onSuccess }: { worker: WorkerWithStats; onSu
         title,
         description: description || undefined,
         priority,
-        order_id: orderId || undefined,
+        order_id: (orderId && orderId !== 'unassigned') ? orderId : undefined,
         due_date: dueDate || undefined,
       });
       toast.success('Task assigned successfully');
@@ -132,7 +132,7 @@ function AssignTaskDialog({ worker, onSuccess }: { worker: WorkerWithStats; onSu
                 <SelectValue placeholder="Select an order" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No order</SelectItem>
+                <SelectItem value="unassigned">No order</SelectItem>
                 {activeOrders.map((order) => (
                   <SelectItem key={order.id} value={order.id}>
                     {order.order_number} - {order.client?.company_name || order.client?.full_name}
@@ -158,14 +158,14 @@ function WorkerDetailDialog({ worker }: { worker: WorkerWithStats }) {
   const updateAssignment = useUpdateAssignment();
   const deleteAssignment = useDeleteAssignment();
 
-  const completionRate = worker.totalAssignments > 0 
-    ? Math.round((worker.completedAssignments / worker.totalAssignments) * 100) 
+  const completionRate = worker.totalAssignments > 0
+    ? Math.round((worker.completedAssignments / worker.totalAssignments) * 100)
     : 0;
 
   const handleStatusChange = async (assignment: WorkerAssignment, newStatus: string) => {
     try {
-      await updateAssignment.mutateAsync({ 
-        id: assignment.id, 
+      await updateAssignment.mutateAsync({
+        id: assignment.id,
         status: newStatus as WorkerAssignment['status']
       });
       toast.success('Status updated');

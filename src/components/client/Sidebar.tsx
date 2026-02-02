@@ -18,13 +18,13 @@ export function ClientTabNav() {
   const location = useLocation();
 
   return (
-    <nav className="w-full border-b bg-background sticky top-20 z-40">
+    <nav className="w-full border-b bg-background">
       <div className="flex items-center justify-center overflow-x-auto scrollbar-hide">
         <div className="flex items-center gap-1 p-2">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href || 
+            const isActive = location.pathname === item.href ||
               (item.href !== '/client' && location.pathname.startsWith(item.href));
-            
+
             return (
               <Link
                 key={item.href}

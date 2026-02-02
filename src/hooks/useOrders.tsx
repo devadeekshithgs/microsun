@@ -37,6 +37,7 @@ export interface Order {
     email: string;
     phone: string | null;
   };
+  assigned_worker_id?: string;
   items?: OrderItem[];
 }
 
@@ -48,6 +49,7 @@ export function useOrders() {
         .from('orders')
         .select(`
           *,
+          assigned_worker_id,
           client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
           items:order_items(
             id,
@@ -63,8 +65,9 @@ export function useOrders() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Order[];
+      return data as unknown as Order[]; // Fixed duplicate error check and cast
     },
+    staleTime: 1000 * 30, // 30 seconds
   });
 }
 
@@ -91,6 +94,28 @@ export function useUpdateOrderStatus() {
         .from('orders')
         .update(updateData)
         .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+}
+
+// Re-export hook
+export function useAssignOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ orderId, workerId }: { orderId: string; workerId: string | null }) => {
+      const { data, error } = await supabase
+        .from('orders')
+        .update({ assigned_worker_id: workerId } as any)
+        .eq('id', orderId)
         .select()
         .single();
 

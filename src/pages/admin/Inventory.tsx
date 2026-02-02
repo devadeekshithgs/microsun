@@ -142,6 +142,7 @@ function VariantRow({
             <img
               src={variant.image_url}
               alt={variant.variant_name}
+              loading="lazy"
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -197,6 +198,7 @@ function ProductGroup({
                 <img
                   src={product.image_url}
                   alt={product.name}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';

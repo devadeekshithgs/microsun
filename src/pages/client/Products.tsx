@@ -335,6 +335,11 @@ export default function ProductsPage() {
                           </div>
                           <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
                           <p className="text-sm text-muted-foreground">{variant.variant_name}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                              Stock: {variant.stock_quantity ?? 0}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Add to Cart Controls */}
@@ -396,3 +401,4 @@ export default function ProductsPage() {
     </div>
   );
 }
+

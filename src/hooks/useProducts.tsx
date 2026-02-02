@@ -24,6 +24,8 @@ export function useCategories() {
       if (error) throw error;
       return data as Category[];
     },
+    staleTime: 1000 * 60 * 30, // 30 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 }
 
@@ -69,6 +71,72 @@ export function useProducts(categoryId?: string) {
         })
       }));
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
+  });
+}
+
+export function useProductsPaginated(params: {
+  page: number;
+  pageSize: number;
+  categoryId?: string;
+  searchQuery?: string;
+}) {
+  return useQuery({
+    queryKey: ['products', 'paginated', params],
+    queryFn: async () => {
+      const { page, pageSize, categoryId, searchQuery } = params;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(*),
+          variants:product_variants(*)
+        `, { count: 'exact' });
+
+      // Apply Search
+      if (searchQuery) {
+        query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      }
+
+      // Apply Filter
+      if (categoryId && categoryId !== 'all') {
+        query = query.eq('category_id', categoryId);
+      }
+
+      // Apply Pagination
+      query = query
+        .order('created_at', { ascending: false }) // Newest first
+        .range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      // Sort variants just like in the main hook
+      const products = (data as Product[]).map(product => ({
+        ...product,
+        variants: product.variants?.sort((a, b) => {
+          const aName = a.variant_name || '';
+          const bName = b.variant_name || '';
+          const aMatch = aName.match(/^(\d+)/);
+          const bMatch = bName.match(/^(\d+)/);
+          if (aMatch && bMatch) return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+          return aName.localeCompare(bName);
+        })
+      }));
+
+      return {
+        data: products,
+        count: count || 0,
+        totalPages: Math.ceil((count || 0) / pageSize)
+      };
+    },
+    staleTime: 1000 * 60, // 1 minute
+    placeholderData: (keepPreviousData) => keepPreviousData, // Keep UI stable while fetching next page
   });
 }
 
@@ -205,48 +273,14 @@ export function useUpdateVariant() {
       if (error) throw error;
       return data;
     },
-    // Optimistic update - update UI immediately before server responds
-    onMutate: async (newVariant) => {
-      console.log('Starting optimistic update for variant:', newVariant.id, 'New Stock:', newVariant.stock_quantity);
-
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['products'] });
-
-      // Snapshot the previous value
-      const previousProducts = queryClient.getQueryData<Product[]>(['products']);
-
-      // Optimistically update the cache
-      queryClient.setQueryData(['products'], (old: Product[] | undefined) => {
-        if (!old) return old;
-        return old.map(product => ({
-          ...product,
-          variants: product.variants?.map(v =>
-            v.id === newVariant.id
-              ? { ...v, ...newVariant }
-              : v
-          )
-        }));
-      });
-
-      // Return context with the snapshot
-      return { previousProducts };
-    },
-    onSuccess: (data, variables) => {
-      console.log('Stock update successful for:', variables.id, 'New Stock:', data.stock_quantity);
-      toast.success(`Stock updated: ${data.stock_quantity} units`);
-    },
-    onError: (error, newVariant, context) => {
-      console.error('Stock update failed:', error);
-      // Rollback on error
-      if (context?.previousProducts) {
-        queryClient.setQueryData(['products'], context.previousProducts);
-      }
-      toast.error('Failed to update: ' + error.message);
-    },
-    onSettled: () => {
-      // Always refetch after error or success to ensure cache is in sync
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product'] });
+      toast.success(`Stock updated: ${data.stock_quantity ?? '0'} units`);
+    },
+    onError: (error) => {
+      console.error('Stock update failed:', error);
+      toast.error('Failed to update: ' + error.message);
     },
   });
 }
@@ -343,5 +377,30 @@ export function useDeleteCategory() {
     onError: (error) => {
       toast.error('Failed to delete category: ' + error.message);
     },
+  });
+}
+
+export function useProductStats() {
+  return useQuery({
+    queryKey: ['product-stats'],
+    queryFn: async () => {
+      // Fetch all variants but ONLY columns needed for stats (very lightweight)
+      const { data: variants, error } = await supabase
+        .from('product_variants')
+        .select('stock_quantity, low_stock_threshold');
+
+      if (error) throw error;
+
+      const totalVariants = variants.length;
+      const lowStockCount = variants.filter(v =>
+        (v.stock_quantity ?? 0) <= (v.low_stock_threshold ?? 10) || (v.stock_quantity ?? 0) === 0
+      ).length;
+
+      return {
+        totalVariants,
+        lowStockCount
+      };
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }

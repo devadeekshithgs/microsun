@@ -1,26 +1,28 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { Loader2 } from "lucide-react";
 
-// Auth Pages
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/Register";
-import WorkerRegister from "@/pages/auth/WorkerRegister";
-import CompleteProfile from "@/pages/auth/CompleteProfile";
-import PendingApproval from "@/pages/PendingApproval";
+// Lazy-loaded pages
+const Login = lazy(() => import("@/pages/auth/Login"));
+const Register = lazy(() => import("@/pages/auth/Register"));
+const WorkerRegister = lazy(() => import("@/pages/auth/WorkerRegister"));
+const CompleteProfile = lazy(() => import("@/pages/auth/CompleteProfile"));
+const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 
 // Dashboard Pages
-import AdminDashboard from "@/pages/admin/Dashboard";
-import ClientDashboard from "@/pages/client/Dashboard";
-import WorkerDashboard from "@/pages/worker/Dashboard";
+const AdminDashboard = lazy(() => import("@/pages/admin/Dashboard"));
+const ClientDashboard = lazy(() => import("@/pages/client/Dashboard"));
+const WorkerDashboard = lazy(() => import("@/pages/worker/Dashboard"));
 
-import NotFound from "@/pages/NotFound";
-import ProfilePage from "@/pages/Profile";
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const ProfilePage = lazy(() => import("@/pages/Profile"));
 
 const queryClient = new QueryClient();
 
@@ -61,64 +63,72 @@ function RoleBasedRedirect() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/worker-register" element={<WorkerRegister />} />
-            <Route path="/complete-profile" element={<CompleteProfile />} />
+      <ErrorBoundary>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            }>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/worker-register" element={<WorkerRegister />} />
+                <Route path="/complete-profile" element={<CompleteProfile />} />
 
-            {/* Pending Approval */}
-            <Route path="/pending-approval" element={
-              <ProtectedRoute allowedRoles={['client']}>
-                <PendingApproval />
-              </ProtectedRoute>
-            } />
+                {/* Pending Approval */}
+                <Route path="/pending-approval" element={
+                  <ProtectedRoute allowedRoles={['client']}>
+                    <PendingApproval />
+                  </ProtectedRoute>
+                } />
 
-            {/* Profile - accessible to all logged in users */}
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            } />
+                {/* Profile - accessible to all logged in users */}
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                } />
 
-            {/* Admin Routes */}
-            <Route path="/admin/*" element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
+                {/* Admin Routes */}
+                <Route path="/admin/*" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
 
-            {/* Worker Routes */}
-            <Route path="/worker/*" element={
-              <ProtectedRoute allowedRoles={['worker']}>
-                <WorkerDashboard />
-              </ProtectedRoute>
-            } />
+                {/* Worker Routes */}
+                <Route path="/worker/*" element={
+                  <ProtectedRoute allowedRoles={['worker']}>
+                    <WorkerDashboard />
+                  </ProtectedRoute>
+                } />
 
-            {/* Client Routes */}
-            <Route path="/client/*" element={
-              <ProtectedRoute allowedRoles={['client']} requireApproval>
-                <ClientDashboard />
-              </ProtectedRoute>
-            } />
+                {/* Client Routes */}
+                <Route path="/client/*" element={
+                  <ProtectedRoute allowedRoles={['client']} requireApproval>
+                    <ClientDashboard />
+                  </ProtectedRoute>
+                } />
 
-            {/* Root - redirect based on role */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <RoleBasedRedirect />
-              </ProtectedRoute>
-            } />
+                {/* Root - redirect based on role */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <RoleBasedRedirect />
+                  </ProtectedRoute>
+                } />
 
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+                {/* Catch-all */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AuthProvider>
+      </ErrorBoundary>
     </TooltipProvider>
   </QueryClientProvider>
 );

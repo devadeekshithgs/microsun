@@ -55,7 +55,7 @@ function OrderDetailsDialog({ order }: { order: Order }) {
               </div>
             )}
           </div>
-          
+
           <div>
             <h4 className="font-medium text-sm mb-2">Order Items</h4>
             <div className="border rounded-lg overflow-hidden">
@@ -73,8 +73,8 @@ function OrderDetailsDialog({ order }: { order: Order }) {
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {item.variant?.product?.image_url ? (
-                            <img 
-                              src={item.variant.product.image_url} 
+                            <img
+                              src={item.variant.product.image_url}
                               alt={item.variant.product.name}
                               className="h-10 w-10 rounded object-cover"
                             />
@@ -100,8 +100,17 @@ function OrderDetailsDialog({ order }: { order: Order }) {
   );
 }
 
+// Import useWorkers
+import { useWorkers } from '@/hooks/useWorkers';
+import { useAssignOrder } from '@/hooks/useOrders';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users } from 'lucide-react';
+
 export function IncomingOrders({ orders }: IncomingOrdersProps) {
   const updateStatus = useUpdateOrderStatus();
+  const assignOrder = useAssignOrder();
+  const { data: workers } = useWorkers();
+
   const pendingOrders = orders.filter(order => order.status === 'pending');
 
   const handleApprove = async (orderId: string) => {
@@ -119,6 +128,15 @@ export function IncomingOrders({ orders }: IncomingOrdersProps) {
       toast.info('Order marked for review');
     } catch (error) {
       toast.error('Failed to update order');
+    }
+  };
+
+  const handleAssign = async (orderId: string, workerId: string | null) => {
+    try {
+      await assignOrder.mutateAsync({ orderId, workerId });
+      toast.success('Order assigned to worker');
+    } catch (error) {
+      toast.error('Failed to assign order');
     }
   };
 
@@ -160,6 +178,7 @@ export function IncomingOrders({ orders }: IncomingOrdersProps) {
               <TableHead>Order #</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Items</TableHead>
+              <TableHead>Assigned To</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -186,6 +205,26 @@ export function IncomingOrders({ orders }: IncomingOrdersProps) {
                   <Badge variant="secondary">
                     {order.items?.reduce((acc, item) => acc + item.quantity, 0) || 0} items
                   </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="min-w-[140px]">
+                    <Select
+                      value={order.assigned_worker_id || "unassigned"}
+                      onValueChange={(val) => handleAssign(order.id, val === "unassigned" ? null : val)}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Assign Worker" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned" className="text-muted-foreground">Unassigned</SelectItem>
+                        {workers?.map(worker => (
+                          <SelectItem key={worker.id} value={worker.id}>
+                            {worker.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {format(new Date(order.created_at), 'dd MMM, HH:mm')}
