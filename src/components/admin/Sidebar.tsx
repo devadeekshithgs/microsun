@@ -7,7 +7,15 @@ import {
   Package,
   Warehouse,
   HardHat,
+  Menu,
 } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import microsunLogo from '@/assets/microsun-logo.png';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
@@ -22,13 +30,13 @@ export function AdminTabNav() {
   const location = useLocation();
 
   return (
-    <nav className="w-full border-b bg-background sticky top-20 z-40">
-      <div className="flex items-center justify-center overflow-x-auto scrollbar-hide">
+    <nav className="hidden md:block w-full border-b bg-background">
+      <div className="flex items-center justify-center">
         <div className="flex items-center gap-1 p-2">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href || 
+            const isActive = location.pathname === item.href ||
               (item.href !== '/admin' && location.pathname.startsWith(item.href));
-            
+
             return (
               <Link
                 key={item.href}
@@ -58,6 +66,53 @@ interface AdminSidebarProps {
 }
 
 export function AdminSidebar({ open, onClose }: AdminSidebarProps) {
-  // This is now deprecated - using AdminTabNav instead
   return null;
+}
+
+export function AdminMobileNav({
+  open,
+  onOpenChange
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const location = useLocation();
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="left" className="w-[300px] sm:w-[350px] p-0">
+        <SheetHeader className="p-6 border-b">
+          <SheetTitle>
+            <div className="flex items-center gap-2">
+              <img src={microsunLogo} alt="MicroSun" className="h-8 w-auto" />
+              <span>Menu</span>
+            </div>
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col py-4">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.href ||
+              (item.href !== '/admin' && location.pathname.startsWith(item.href));
+
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => onOpenChange(false)}
+                className={cn(
+                  'flex items-center gap-4 px-6 py-4 text-base font-medium transition-colors border-l-4',
+                  isActive
+                    ? 'bg-primary/10 text-primary border-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground border-transparent'
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }

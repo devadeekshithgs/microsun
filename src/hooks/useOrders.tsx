@@ -74,7 +74,7 @@ export function useUpdateOrderStatus() {
   return useMutation({
     mutationFn: async ({ id, status, notes }: { id: string; status: OrderStatus; notes?: string }) => {
       const updateData: Record<string, unknown> = { status };
-      
+
       if (status === 'confirmed') {
         updateData.confirmed_at = new Date().toISOString();
       } else if (status === 'dispatched') {
@@ -82,7 +82,7 @@ export function useUpdateOrderStatus() {
       } else if (status === 'delivered') {
         updateData.delivered_at = new Date().toISOString();
       }
-      
+
       if (notes !== undefined) {
         updateData.admin_notes = notes;
       }
@@ -96,6 +96,64 @@ export function useUpdateOrderStatus() {
 
       if (error) throw error;
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+    },
+  });
+}
+
+export function useCreateOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      items,
+      notes
+    }: {
+      items: { variant_id: string; quantity: number }[];
+      notes?: string
+    }) => {
+      // 1. Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // 2. Get client profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) throw new Error('Profile not found');
+
+      // 3. Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          client_id: profile.id,
+          status: 'pending',
+          notes: notes
+        } as any)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // 4. Create order items
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        variant_id: item.variant_id,
+        quantity: item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      return order;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, ShoppingCart, Package, Plus, Minus, LayoutGrid, List } from 'lucide-react';
 import { useProducts, useCategories, type Product, type ProductVariant } from '@/hooks/useProducts';
+import { useCart } from '@/context/CartContext';
 import { getStockStatus } from '@/lib/types';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -17,14 +18,15 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [cart, setCart] = useState<Map<string, { variant: ProductVariant; quantity: number; productName: string; productImage: string | null }>>(new Map());
   const [activeInputs, setActiveInputs] = useState<Set<string>>(new Set());
+
+  const { cart, itemCount, addToCart, updateQuantity, removeFromCart } = useCart();
   const { data: products, isLoading: productsLoading } = useProducts();
   const { data: categories } = useCategories();
-  
+
   // Filter only active products and variants
   const activeProducts = products?.filter((product) => product.is_active) || [];
-  
+
   const filteredProducts = activeProducts.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -33,7 +35,7 @@ export default function ProductsPage() {
   });
 
   // Flatten for bulk view
-  const allVariants = filteredProducts.flatMap((product) => 
+  const allVariants = filteredProducts.flatMap((product) =>
     (product.variants?.filter(v => v.is_active) || []).map((variant) => ({
       ...variant,
       productName: product.name,
@@ -41,67 +43,37 @@ export default function ProductsPage() {
       categoryName: product.category?.name || 'Uncategorized',
     }))
   );
-  
-  const updateCart = (productName: string, productImage: string | null, variant: ProductVariant, delta: number, forceRemove = false) => {
-    setCart((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(variant.id);
-      const newQty = (existing?.quantity || 0) + delta;
-      
-      if (newQty <= 0 && forceRemove) {
-        next.delete(variant.id);
-        setActiveInputs(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(variant.id);
-          return newSet;
-        });
-      } else if (newQty <= 0) {
-        next.set(variant.id, { 
-          variant, 
-          quantity: 0, 
-          productName,
-          productImage
-        });
-      } else {
-        next.set(variant.id, { 
-          variant, 
-          quantity: newQty, 
-          productName,
-          productImage
-        });
-      }
-      return next;
-    });
-    
-    if (delta > 0) {
-      toast.success(`Added to cart`);
-    }
-  };
 
-  const setCartQuantity = (productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => {
-    setCart((prev) => {
-      const next = new Map(prev);
-      next.set(variant.id, { 
-        variant, 
-        quantity: Math.max(0, newQty), 
-        productName,
-        productImage
-      });
-      return next;
-    });
-  };
+  const handleUpdateCart = (productName: string, productImage: string | null, variant: ProductVariant, delta: number, forceRemove = false) => {
+    const currentQty = cart.get(variant.id)?.quantity || 0;
+    const newQty = currentQty + delta;
 
-  const handleInputBlur = (productName: string, productImage: string | null, variant: ProductVariant) => {
-    const qty = getCartQuantity(variant.id);
-    if (qty <= 0) {
-      setCart((prev) => {
-        const next = new Map(prev);
-        next.delete(variant.id);
-        return next;
-      });
+    if (newQty <= 0 && forceRemove) {
+      removeFromCart(variant.id);
       setActiveInputs(prev => {
         const newSet = new Set(prev);
         newSet.delete(variant.id);
+        return newSet;
+      });
+    } else {
+      addToCart(productName, productImage, variant, delta);
+      if (delta > 0) {
+        toast.success(`Added to cart`);
+      }
+    }
+  };
+
+  const handleSetQuantity = (productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => {
+    updateQuantity(variant.id, Math.max(0, newQty));
+  };
+
+  const handleInputBlur = (variantId: string) => {
+    const qty = cart.get(variantId)?.quantity || 0;
+    if (qty <= 0) {
+      removeFromCart(variantId);
+      setActiveInputs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(variantId);
         return newSet;
       });
     }
@@ -111,10 +83,6 @@ export default function ProductsPage() {
     setActiveInputs(prev => new Set(prev).add(variantId));
   };
 
-  const getCartQuantity = (variantId: string) => {
-    return cart.get(variantId)?.quantity || 0;
-  };
-  
   const getStockBadge = (variant: ProductVariant) => {
     const status = getStockStatus(variant.stock_quantity ?? 0, variant.low_stock_threshold ?? 10);
     if (status === 'out_of_stock') {
@@ -125,13 +93,11 @@ export default function ProductsPage() {
     }
     return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">In Stock</Badge>;
   };
-  
+
   const isInStock = (variant: ProductVariant) => {
     return (variant.stock_quantity ?? 0) > 0;
   };
-  
-  const cartItemCount = Array.from(cart.values()).reduce((acc, item) => acc + item.quantity, 0);
-  
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -158,17 +124,17 @@ export default function ProductsPage() {
               </>
             )}
           </Button>
-          {cartItemCount > 0 && (
+          {itemCount > 0 && (
             <Button asChild size="lg" className="h-12 px-6">
               <Link to="/client/cart">
                 <ShoppingCart className="mr-2 h-5 w-5" />
-                View Cart ({cartItemCount})
+                View Cart ({itemCount})
               </Link>
             </Button>
           )}
         </div>
       </div>
-      
+
       <Card>
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4">
@@ -225,8 +191,8 @@ export default function ProductsPage() {
             <div className="text-center py-12">
               <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium text-muted-foreground">
-                {searchQuery || categoryFilter !== 'all' 
-                  ? 'No products match your search.' 
+                {searchQuery || categoryFilter !== 'all'
+                  ? 'No products match your search.'
                   : 'Products will appear here once the catalog is set up.'}
               </p>
             </div>
@@ -253,15 +219,15 @@ export default function ProductsPage() {
                     <TableBody>
                       {allVariants.map((variant) => {
                         const inStock = isInStock(variant);
-                        const cartQty = getCartQuantity(variant.id);
-                        
+                        const cartQty = cart.get(variant.id)?.quantity || 0;
+
                         return (
                           <TableRow key={variant.id} className="h-[120px]">
                             <TableCell className="py-2">
                               <div className="h-24 w-28 rounded-lg bg-muted overflow-hidden">
                                 {variant.productImage ? (
-                                  <img 
-                                    src={variant.productImage} 
+                                  <img
+                                    src={variant.productImage}
                                     alt={variant.productName}
                                     className="h-full w-full object-cover"
                                   />
@@ -293,7 +259,7 @@ export default function ProductsPage() {
                                   variant="outline"
                                   size="icon"
                                   className="h-10 w-10"
-                                  onClick={() => updateCart(variant.productName, variant.productImage, variant, -1)}
+                                  onClick={() => handleUpdateCart(variant.productName, variant.productImage, variant, -1)}
                                   disabled={cartQty === 0}
                                 >
                                   <Minus className="h-4 w-4" />
@@ -306,7 +272,7 @@ export default function ProductsPage() {
                                     const newQty = parseInt(e.target.value) || 0;
                                     const delta = newQty - cartQty;
                                     if (delta !== 0) {
-                                      updateCart(variant.productName, variant.productImage, variant, delta);
+                                      handleUpdateCart(variant.productName, variant.productImage, variant, delta);
                                     }
                                   }}
                                   className="w-16 h-10 text-center"
@@ -316,7 +282,7 @@ export default function ProductsPage() {
                                   variant="outline"
                                   size="icon"
                                   className="h-10 w-10"
-                                  onClick={() => updateCart(variant.productName, variant.productImage, variant, 1)}
+                                  onClick={() => handleUpdateCart(variant.productName, variant.productImage, variant, 1)}
                                   disabled={!inStock}
                                 >
                                   <Plus className="h-4 w-4" />
@@ -336,18 +302,18 @@ export default function ProductsPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {filteredProducts.map((product) => {
                 const activeVariants = product.variants?.filter(v => v.is_active) || [];
-                
+
                 return activeVariants.map((variant) => {
                   const inStock = isInStock(variant);
-                  const cartQty = getCartQuantity(variant.id);
-                  
+                  const cartQty = cart.get(variant.id)?.quantity || 0;
+
                   return (
                     <Card key={variant.id} className="overflow-hidden flex flex-col">
                       {/* Product Image - Large and prominent */}
                       <div className="aspect-square bg-muted relative">
                         {product.image_url ? (
-                          <img 
-                            src={product.image_url} 
+                          <img
+                            src={product.image_url}
                             alt={product.name}
                             className="w-full h-full object-cover"
                           />
@@ -360,7 +326,7 @@ export default function ProductsPage() {
                           {getStockBadge(variant)}
                         </div>
                       </div>
-                      
+
                       {/* Product Info */}
                       <CardContent className="p-4 flex-1 flex flex-col">
                         <div className="flex-1">
@@ -370,7 +336,7 @@ export default function ProductsPage() {
                           <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
                           <p className="text-sm text-muted-foreground">{variant.variant_name}</p>
                         </div>
-                        
+
                         {/* Add to Cart Controls */}
                         <div className="mt-4">
                           {activeInputs.has(variant.id) || cartQty > 0 ? (
@@ -379,7 +345,7 @@ export default function ProductsPage() {
                                 variant="outline"
                                 size="icon"
                                 className="h-12 w-12"
-                                onClick={() => updateCart(product.name, product.image_url, variant, -1, true)}
+                                onClick={() => handleUpdateCart(product.name, product.image_url, variant, -1, true)}
                               >
                                 <Minus className="h-5 w-5" />
                               </Button>
@@ -389,16 +355,16 @@ export default function ProductsPage() {
                                 value={cartQty || ''}
                                 onChange={(e) => {
                                   const newQty = parseInt(e.target.value) || 0;
-                                  setCartQuantity(product.name, product.image_url, variant, newQty);
+                                  handleSetQuantity(product.name, product.image_url, variant, newQty);
                                 }}
-                                onBlur={() => handleInputBlur(product.name, product.image_url, variant)}
+                                onBlur={() => handleInputBlur(variant.id)}
                                 className="flex-1 h-12 text-center text-xl font-bold"
                               />
                               <Button
                                 variant="outline"
                                 size="icon"
                                 className="h-12 w-12"
-                                onClick={() => updateCart(product.name, product.image_url, variant, 1)}
+                                onClick={() => handleUpdateCart(product.name, product.image_url, variant, 1)}
                                 disabled={!inStock}
                               >
                                 <Plus className="h-5 w-5" />
@@ -409,7 +375,7 @@ export default function ProductsPage() {
                               className="w-full h-12 text-base"
                               onClick={() => {
                                 activateInput(variant.id);
-                                updateCart(product.name, product.image_url, variant, 1);
+                                handleUpdateCart(product.name, product.image_url, variant, 1);
                               }}
                               disabled={!inStock}
                             >

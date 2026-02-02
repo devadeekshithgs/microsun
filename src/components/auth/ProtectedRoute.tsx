@@ -9,12 +9,12 @@ interface ProtectedRouteProps {
   requireApproval?: boolean;
 }
 
-export function ProtectedRoute({ 
-  children, 
-  allowedRoles, 
-  requireApproval = false 
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+  requireApproval = false
 }: ProtectedRouteProps) {
-  const { user, role, loading, isApproved } = useAuth();
+  const { user, role, profile, loading, isApproved } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -29,6 +29,12 @@ export function ProtectedRoute({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Check if client profile is incomplete (missing company_name or phone)
+  // Don't redirect if already on complete-profile page to avoid infinite loop
+  if (role === 'client' && profile && (!profile.company_name || !profile.phone) && location.pathname !== '/complete-profile') {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     // Redirect to appropriate dashboard based on role
     const redirectPath = role === 'admin' ? '/admin' : role === 'worker' ? '/worker' : '/client';
@@ -41,3 +47,4 @@ export function ProtectedRoute({
 
   return <>{children}</>;
 }
+

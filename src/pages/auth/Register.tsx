@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import microsunLogo from '@/assets/microsun-logo.png';
 import { registerSchema, type RegisterFormValues } from '@/lib/validations';
 
@@ -43,7 +43,7 @@ export default function Register() {
         values.companyName,
         values.phone
       );
-      
+
       if (error) {
         toast.error(error.message);
       } else {
@@ -60,15 +60,19 @@ export default function Register() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
       });
       if (error) {
         toast.error(error.message);
+        setGoogleLoading(false);
       }
+      // Browser will redirect to Google OAuth
     } catch (error) {
       toast.error('Failed to sign in with Google');
-    } finally {
       setGoogleLoading(false);
     }
   };
@@ -204,7 +208,21 @@ export default function Register() {
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="9876543210" className="h-12" {...field} />
+                      <Input
+                        type="tel"
+                        placeholder="9876543210"
+                        className="h-12"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={field.value}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          field.onChange(value);
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
+                      />
                     </FormControl>
                     <FormDescription>10-digit Indian mobile number</FormDescription>
                     <FormMessage />

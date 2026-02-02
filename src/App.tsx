@@ -10,6 +10,8 @@ import { Loader2 } from "lucide-react";
 // Auth Pages
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
+import WorkerRegister from "@/pages/auth/WorkerRegister";
+import CompleteProfile from "@/pages/auth/CompleteProfile";
 import PendingApproval from "@/pages/PendingApproval";
 
 // Dashboard Pages
@@ -18,11 +20,12 @@ import ClientDashboard from "@/pages/client/Dashboard";
 import WorkerDashboard from "@/pages/worker/Dashboard";
 
 import NotFound from "@/pages/NotFound";
+import ProfilePage from "@/pages/Profile";
 
 const queryClient = new QueryClient();
 
 function RoleBasedRedirect() {
-  const { role, loading, isApproved } = useAuth();
+  const { role, profile, loading, isApproved } = useAuth();
 
   if (loading) {
     return (
@@ -30,6 +33,11 @@ function RoleBasedRedirect() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  // Check if profile is incomplete (missing company_name or phone for non-admin clients)
+  if (profile && role === 'client' && (!profile.company_name || !profile.phone)) {
+    return <Navigate to="/complete-profile" replace />;
   }
 
   if (role === 'admin') {
@@ -61,42 +69,51 @@ const App = () => (
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            
+            <Route path="/worker-register" element={<WorkerRegister />} />
+            <Route path="/complete-profile" element={<CompleteProfile />} />
+
             {/* Pending Approval */}
             <Route path="/pending-approval" element={
               <ProtectedRoute allowedRoles={['client']}>
                 <PendingApproval />
               </ProtectedRoute>
             } />
-            
+
+            {/* Profile - accessible to all logged in users */}
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } />
+
             {/* Admin Routes */}
             <Route path="/admin/*" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
               </ProtectedRoute>
             } />
-            
+
             {/* Worker Routes */}
             <Route path="/worker/*" element={
               <ProtectedRoute allowedRoles={['worker']}>
                 <WorkerDashboard />
               </ProtectedRoute>
             } />
-            
+
             {/* Client Routes */}
             <Route path="/client/*" element={
               <ProtectedRoute allowedRoles={['client']} requireApproval>
                 <ClientDashboard />
               </ProtectedRoute>
             } />
-            
+
             {/* Root - redirect based on role */}
             <Route path="/" element={
               <ProtectedRoute>
                 <RoleBasedRedirect />
               </ProtectedRoute>
             } />
-            
+
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>

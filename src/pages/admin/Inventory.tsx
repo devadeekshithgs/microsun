@@ -1,43 +1,42 @@
-import { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Package, AlertTriangle, Plus, Minus, Check, X, LayoutGrid, List, Eye } from 'lucide-react';
-import { useProducts, useCategories, useUpdateVariant, type ProductVariant, type Product } from '@/hooks/useProducts';
+import { Search, Package, AlertTriangle, Plus, Minus, Check, X, ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react';
+import { useProducts, useCategories, useUpdateVariant, type ProductVariant, type Product, type Category } from '@/hooks/useProducts';
 import { getStockStatus } from '@/lib/types';
 import { toast } from 'sonner';
-import { ProductDetailDialog } from '@/components/admin/ProductDetailDialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-interface InventoryItemWithProduct extends ProductVariant {
-  productName: string;
-  productImage: string | null;
-  variantImage: string | null;
-  categoryName: string;
-  productId: string;
-  reorder_point: number | null;
-}
-
-type ViewMode = 'grid' | 'list';
-
-// Inline editable stock input component
-function EditableStock({ 
-  value, 
-  onSave, 
-  isUpdating 
-}: { 
-  value: number; 
-  onSave: (newValue: number) => void; 
-  isUpdating: boolean;
+// Inline editable stock input - properly isolated per variant
+function EditableStock({
+  value,
+  variantId,
+  onSave
+}: {
+  value: number;
+  variantId: string;
+  onSave: (id: string, newValue: number) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value.toString());
 
+  // Sync editValue when external value changes (e.g., from optimistic update)
+  React.useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value.toString());
+    }
+  }, [value, isEditing]);
+
   const handleSave = () => {
     const newValue = parseInt(editValue) || 0;
-    onSave(newValue);
+    if (newValue !== value) {
+      onSave(variantId, newValue);
+    }
     setIsEditing(false);
   };
 
@@ -59,13 +58,13 @@ function EditableStock({
           value={editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="w-20 h-10 text-center"
+          className="w-20 h-9 text-center"
           autoFocus
         />
-        <Button size="icon" className="h-10 w-10" onClick={handleSave} disabled={isUpdating}>
+        <Button size="icon" className="h-9 w-9" onClick={handleSave}>
           <Check className="h-4 w-4" />
         </Button>
-        <Button size="icon" variant="outline" className="h-10 w-10" onClick={handleCancel}>
+        <Button size="icon" variant="outline" className="h-9 w-9" onClick={handleCancel}>
           <X className="h-4 w-4" />
         </Button>
       </div>
@@ -75,223 +74,301 @@ function EditableStock({
   return (
     <button
       onClick={() => setIsEditing(true)}
-      className="text-2xl font-bold tabular-nums hover:bg-muted px-3 py-1 rounded-lg transition-colors cursor-pointer min-w-[60px] text-center"
+      className="text-xl font-bold tabular-nums hover:bg-muted px-3 py-1 rounded transition-colors cursor-pointer min-w-[50px] text-center"
     >
       {value}
     </button>
   );
 }
 
-// Stock editor for grid view with +/- buttons
-function StockEditorGrid({ 
-  item, 
-  onUpdate, 
-  isUpdating 
-}: { 
-  item: InventoryItemWithProduct; 
-  onUpdate: (id: string, newStock: number) => void; 
-  isUpdating: boolean;
+// Quick stock adjustment buttons
+function StockAdjuster({
+  variant,
+  onUpdate
+}: {
+  variant: ProductVariant;
+  onUpdate: (id: string, newStock: number) => void;
 }) {
-  const [isAdding, setIsAdding] = useState(false);
-  const [addQuantity, setAddQuantity] = useState(0);
-  const currentStock = item.stock_quantity ?? 0;
-
-  const handleQuickAdjust = (delta: number) => {
-    const newStock = Math.max(0, currentStock + delta);
-    onUpdate(item.id, newStock);
-  };
-
-  const handleAddQuantity = () => {
-    if (addQuantity > 0) {
-      onUpdate(item.id, currentStock + addQuantity);
-      setAddQuantity(0);
-      setIsAdding(false);
-    }
-  };
+  const currentStock = variant.stock_quantity ?? 0;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-12 w-12 rounded-full border-destructive/50 text-destructive hover:bg-destructive/10"
-          onClick={() => handleQuickAdjust(-1)}
-          disabled={currentStock === 0 || isUpdating}
-        >
-          <Minus className="h-5 w-5" />
-        </Button>
-        <EditableStock 
-          value={currentStock} 
-          onSave={(newVal) => onUpdate(item.id, newVal)} 
-          isUpdating={isUpdating}
-        />
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-12 w-12 rounded-full border-green-500/50 text-green-600 hover:bg-green-50"
-          onClick={() => handleQuickAdjust(1)}
-          disabled={isUpdating}
-        >
-          <Plus className="h-5 w-5" />
-        </Button>
-      </div>
-
-      {!isAdding ? (
-        <Button
-          variant="outline"
-          className="w-full h-11 text-green-600 border-green-500/50 hover:bg-green-50"
-          onClick={() => setIsAdding(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Quantity
-        </Button>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            min="1"
-            value={addQuantity || ''}
-            onChange={(e) => setAddQuantity(parseInt(e.target.value) || 0)}
-            placeholder="Qty"
-            className="h-11 w-24 text-center text-lg"
-            autoFocus
-          />
-          <Button
-            size="icon"
-            className="h-11 w-11 bg-green-600 hover:bg-green-700"
-            onClick={handleAddQuantity}
-            disabled={addQuantity <= 0 || isUpdating}
-          >
-            <Check className="h-5 w-5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-11 w-11"
-            onClick={() => { setAddQuantity(0); setIsAdding(false); }}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-      )}
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 text-destructive hover:bg-destructive/10"
+        onClick={() => onUpdate(variant.id, Math.max(0, currentStock - 1))}
+        disabled={currentStock === 0}
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <EditableStock
+        value={currentStock}
+        variantId={variant.id}
+        onSave={onUpdate}
+      />
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 text-green-600 hover:bg-green-50"
+        onClick={() => onUpdate(variant.id, currentStock + 1)}
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
 
-export default function InventoryPage() {
+// Variant row component
+function VariantRow({
+  variant,
+  onUpdate
+}: {
+  variant: ProductVariant;
+  onUpdate: (id: string, newStock: number) => void;
+}) {
+  const status = getStockStatus(variant.stock_quantity ?? 0, variant.low_stock_threshold ?? 10);
+  const statusConfig = {
+    in_stock: { label: 'In Stock', className: 'bg-green-100 text-green-800' },
+    low_stock: { label: 'Low Stock', className: 'bg-amber-100 text-amber-800' },
+    out_of_stock: { label: 'Out of Stock', className: 'bg-red-100 text-red-800' },
+  };
+
+  return (
+    <div className="flex items-center justify-between py-3 px-4 border-b last:border-b-0 hover:bg-muted/30">
+      <div className="flex items-center gap-4 flex-1">
+        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
+          {variant.image_url ? (
+            <img
+              src={variant.image_url}
+              alt={variant.variant_name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
+            />
+          ) : null}
+          <Package className={`h-5 w-5 text-muted-foreground ${variant.image_url ? 'hidden' : ''}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium truncate" title={variant.variant_name}>{variant.variant_name}</p>
+          <p className="text-xs text-muted-foreground font-mono">{variant.sku || 'No SKU'}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-4">
+        <StockAdjuster variant={variant} onUpdate={onUpdate} />
+        <Badge className={statusConfig[status].className + ' min-w-[80px] justify-center'}>
+          {statusConfig[status].label}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+// Product group component
+function ProductGroup({
+  product,
+  onUpdate,
+  defaultOpen = false
+}: {
+  product: Product;
+  onUpdate: (id: string, newStock: number) => void;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const variants = product.variants || [];
+  const totalStock = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
+  const lowStockCount = variants.filter(v => {
+    const status = getStockStatus(v.stock_quantity ?? 0, v.low_stock_threshold ?? 10);
+    return status === 'low_stock' || status === 'out_of_stock';
+  }).length;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg mb-2">
+      <CollapsibleTrigger className="w-full">
+        <div className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-t-lg">
+          <div className="flex items-center gap-3">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+
+            {/* Product Image */}
+            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden border">
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+              ) : null}
+              <Package className={`h-4 w-4 text-muted-foreground ${product.image_url ? 'hidden' : ''}`} />
+            </div>
+
+            <span className="font-semibold">{product.name}</span>
+            <Badge variant="outline">{variants.length} variant{variants.length !== 1 ? 's' : ''}</Badge>
+          </div>
+          <div className="flex items-center gap-4 text-sm">
+            <span className="text-muted-foreground">Total: <span className="font-medium text-foreground">{totalStock}</span></span>
+            {lowStockCount > 0 && (
+              <Badge className="bg-amber-100 text-amber-800">
+                <AlertTriangle className="h-3 w-3 mr-1" />
+                {lowStockCount} low
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border-t">
+          {variants.map((variant) => (
+            <VariantRow
+              key={variant.id}
+              variant={variant}
+              onUpdate={onUpdate}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// Category group component
+function CategoryGroup({
+  category,
+  products,
+  onUpdate,
+  defaultOpen = false
+}: {
+  category: Category;
+  products: Product[];
+  onUpdate: (id: string, newStock: number) => void;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const categoryProducts = products.filter(p => p.category_id === category.id);
+  const totalVariants = categoryProducts.reduce((sum, p) => sum + (p.variants?.length || 0), 0);
+  const totalStock = categoryProducts.reduce((sum, p) =>
+    sum + (p.variants?.reduce((vs, v) => vs + (v.stock_quantity ?? 0), 0) || 0), 0);
+
+  if (categoryProducts.length === 0) return null;
+
+  return (
+    <Card className="mb-4">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full">
+          <CardHeader className="py-4 hover:bg-muted/30 rounded-t-lg cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isOpen ? <FolderOpen className="h-5 w-5 text-primary" /> : <Folder className="h-5 w-5 text-primary" />}
+                <CardTitle className="text-lg">{category.name}</CardTitle>
+                <Badge variant="outline">
+                  {categoryProducts.length} product{categoryProducts.length !== 1 ? 's' : ''} • {totalVariants} variants
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Total stock: <span className="font-semibold text-foreground">{totalStock.toLocaleString()}</span>
+                </span>
+                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </div>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            {categoryProducts.map((product) => (
+              <ProductGroup
+                key={product.id}
+                product={product}
+                onUpdate={onUpdate}
+              />
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+
+function InventoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [stockFilter, setStockFilter] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  
-  const { data: products, isLoading } = useProducts();
-  const { data: categories } = useCategories();
+
+  const { data: allProducts = [], isLoading } = useProducts();
+  const { data: allCategories = [] } = useCategories();
   const updateVariant = useUpdateVariant();
-  
-  // Flatten products and variants for inventory view
-  const inventoryItems: InventoryItemWithProduct[] = products?.flatMap((product) => 
-    (product.variants || []).map((variant) => ({
-      ...variant,
-      productName: product.name,
-      productImage: product.image_url,
-      variantImage: (variant as any).image_url || null,
-      categoryName: product.category?.name || 'Uncategorized',
-      productId: product.id,
-      reorder_point: (variant as any).reorder_point ?? 20,
-    }))
-  ) || [];
-  
-  const filteredItems = inventoryItems.filter((item) => {
-    const matchesSearch = 
-      item.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.variant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.sku?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    
-    const product = products?.find(p => p.id === item.productId);
-    const matchesCategory = categoryFilter === 'all' || product?.category_id === categoryFilter;
-    
-    const status = getStockStatus(item.stock_quantity ?? 0, item.low_stock_threshold ?? 10);
-    const matchesStock = stockFilter === 'all' || status === stockFilter;
-    
-    return matchesSearch && matchesCategory && matchesStock;
-  });
-  
-  const getStockBadge = (variant: ProductVariant) => {
-    const status = getStockStatus(variant.stock_quantity ?? 0, variant.low_stock_threshold ?? 10);
-    const config = {
-      in_stock: { label: 'In Stock', className: 'bg-green-100 text-green-800 hover:bg-green-100' },
-      low_stock: { label: 'Low Stock', className: 'bg-amber-100 text-amber-800 hover:bg-amber-100' },
-      out_of_stock: { label: 'Out of Stock', className: 'bg-red-100 text-red-800 hover:bg-red-100' },
+
+  // Handle stock update - variant specific
+  const handleStockUpdate = (variantId: string, newStock: number) => {
+    console.log(`[Inventory] Requesting update for Variant ID: ${variantId} -> New Stock: ${newStock}`);
+    updateVariant.mutate({ id: variantId, stock_quantity: newStock });
+  };
+
+  // Filter products based on search and filters
+  const filteredProducts = useMemo(() => {
+    return allProducts.filter((product) => {
+      const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter;
+
+      const matchesSearch = searchQuery === '' ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.variants?.some(v =>
+          v.variant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          v.sku?.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      const matchesStock = stockFilter === 'all' || product.variants?.some(v => {
+        const status = getStockStatus(v.stock_quantity ?? 0, v.low_stock_threshold ?? 10);
+        return status === stockFilter;
+      });
+
+      return matchesCategory && matchesSearch && matchesStock;
+    }) || [];
+  }, [allProducts, categoryFilter, searchQuery, stockFilter]);
+
+  // Stats calculation
+  const stats = useMemo(() => {
+    const allVariants = allProducts.flatMap(p => p.variants || []);
+    return {
+      totalVariants: allVariants.length,
+      totalStock: allVariants.reduce((acc, v) => acc + (v.stock_quantity ?? 0), 0),
+      lowStockCount: allVariants.filter(v => getStockStatus(v.stock_quantity ?? 0, v.low_stock_threshold ?? 10) === 'low_stock').length,
+      outOfStockCount: allVariants.filter(v => getStockStatus(v.stock_quantity ?? 0, v.low_stock_threshold ?? 10) === 'out_of_stock').length,
     };
-    return <Badge className={config[status].className}>{config[status].label}</Badge>;
-  };
+  }, [allProducts]);
 
-  const handleStockUpdate = async (variantId: string, newStock: number) => {
-    try {
-      await updateVariant.mutateAsync({ id: variantId, stock_quantity: newStock });
-    } catch (error) {
-      toast.error('Failed to update stock');
-    }
-  };
+  // Get filtered categories that have products
+  const activeCategories = useMemo(() => {
+    return allCategories.filter(c =>
+      filteredProducts.some(p => p.category_id === c.id)
+    ) || [];
+  }, [allCategories, filteredProducts]);
 
-  const handleOpenProduct = (productId: string) => {
-    const product = products?.find(p => p.id === productId);
-    if (product) {
-      setSelectedProduct(product);
-      setDialogOpen(true);
-    }
-  };
-  
-  const totalItems = inventoryItems.length;
-  const lowStockCount = inventoryItems.filter(
-    (item) => getStockStatus(item.stock_quantity ?? 0, item.low_stock_threshold ?? 10) === 'low_stock'
-  ).length;
-  const outOfStockCount = inventoryItems.filter(
-    (item) => getStockStatus(item.stock_quantity ?? 0, item.low_stock_threshold ?? 10) === 'out_of_stock'
-  ).length;
-  const totalStock = inventoryItems.reduce((acc, item) => acc + (item.stock_quantity ?? 0), 0);
-  
+  // Products without category
+  const uncategorizedProducts = useMemo(() => {
+    return filteredProducts.filter(p => !p.category_id);
+  }, [filteredProducts]);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-muted-foreground">Track stock levels and manage inventory.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'outline'}
-            size="lg"
-            className="h-12"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="h-5 w-5 mr-2" />
-            List
-          </Button>
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
-            size="lg"
-            className="h-12"
-            onClick={() => setViewMode('grid')}
-          >
-            <LayoutGrid className="h-5 w-5 mr-2" />
-            Grid
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
+        <p className="text-muted-foreground">Track stock levels by category, product, and variant.</p>
       </div>
-      
+
       {/* Stats */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total SKUs</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Variants</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
+            <div className="text-2xl font-bold">{stats.totalVariants}</div>
           </CardContent>
         </Card>
         <Card>
@@ -300,7 +377,7 @@ export default function InventoryPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalStock.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{stats.totalStock.toLocaleString()}</div>
           </CardContent>
         </Card>
         <Card>
@@ -309,7 +386,7 @@ export default function InventoryPage() {
             <AlertTriangle className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-500">{lowStockCount}</div>
+            <div className="text-2xl font-bold text-amber-500">{stats.lowStockCount}</div>
           </CardContent>
         </Card>
         <Card>
@@ -318,219 +395,110 @@ export default function InventoryPage() {
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{outOfStockCount}</div>
+            <div className="text-2xl font-bold text-destructive">{stats.outOfStockCount}</div>
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Filters */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4">
-            <div>
-              <CardTitle>Stock Overview</CardTitle>
-              <CardDescription>Click on any stock number to edit it directly</CardDescription>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by product, variant, or SKU..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12"
-                />
-              </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="sm:w-[180px] h-12">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories?.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={stockFilter} onValueChange={setStockFilter}>
-                <SelectTrigger className="sm:w-[180px] h-12">
-                  <SelectValue placeholder="Stock Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="in_stock">In Stock</SelectItem>
-                  <SelectItem value="low_stock">Low Stock</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <CardTitle>Stock Overview</CardTitle>
+          <CardDescription>Organized by Category → Product → Variant</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-4">
+          <div className="flex flex-col sm:flex-row gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products, variants, or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="sm:w-[180px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {allCategories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={stockFilter} onValueChange={setStockFilter}>
+              <SelectTrigger className="sm:w-[180px]">
+                <SelectValue placeholder="Stock Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="in_stock">In Stock</SelectItem>
+                <SelectItem value="low_stock">Low Stock</SelectItem>
+                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {isLoading ? (
             <p className="text-sm text-muted-foreground text-center py-12">Loading inventory...</p>
-          ) : filteredItems.length === 0 ? (
+          ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-lg font-medium text-muted-foreground">
                 {searchQuery || categoryFilter !== 'all' || stockFilter !== 'all'
-                  ? 'No items match your filters.' 
+                  ? 'No items match your filters.'
                   : 'No inventory data yet.'}
               </p>
             </div>
-          ) : viewMode === 'list' ? (
-            /* List/Matrix View */
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[80px]">Image</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Variant</TableHead>
-                    <TableHead>SKU</TableHead>
-                    <TableHead className="text-center w-[200px]">Stock</TableHead>
-                    <TableHead className="text-center">Alert</TableHead>
-                    <TableHead className="text-center">Reorder</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredItems.map((item) => (
-                    <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleOpenProduct(item.productId)}>
-                      <TableCell>
-                        <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden">
-                          {item.variantImage || item.productImage ? (
-                            <img 
-                              src={item.variantImage || item.productImage || ''} 
-                              alt={item.productName}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                              <Package className="h-6 w-6 text-muted-foreground/50" />
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {item.productName}
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </TableCell>
-                      <TableCell>{item.variant_name}</TableCell>
-                      <TableCell className="text-muted-foreground font-mono text-sm">{item.sku || '-'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={() => handleStockUpdate(item.id, Math.max(0, (item.stock_quantity ?? 0) - 1))}
-                            disabled={item.stock_quantity === 0 || updateVariant.isPending}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <EditableStock 
-                            value={item.stock_quantity ?? 0} 
-                            onSave={(newVal) => handleStockUpdate(item.id, newVal)} 
-                            isUpdating={updateVariant.isPending}
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-10 w-10"
-                            onClick={() => handleStockUpdate(item.id, (item.stock_quantity ?? 0) + 1)}
-                            disabled={updateVariant.isPending}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="text-amber-600 border-amber-300">
-                          {item.low_stock_threshold ?? 10}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="text-blue-600 border-blue-300">
-                          {item.reorder_point ?? 20}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{getStockBadge(item)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
           ) : (
-            /* Grid View */
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredItems.map((item) => (
-                <Card key={item.id} className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleOpenProduct(item.productId)}>
-                  <div className="aspect-square bg-muted relative">
-                    {item.variantImage || item.productImage ? (
-                      <img 
-                        src={item.variantImage || item.productImage || ''} 
-                        alt={item.productName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Package className="h-16 w-16 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    <div className="absolute top-3 right-3">
-                      {getStockBadge(item)}
+            <div>
+              {/* Render categories with their products */}
+              {activeCategories.map((category) => (
+                <CategoryGroup
+                  key={category.id}
+                  category={category}
+                  products={filteredProducts}
+                  onUpdate={handleStockUpdate}
+                />
+              ))}
+
+              {/* Uncategorized products */}
+              {uncategorizedProducts.length > 0 && (
+                <Card className="mb-4">
+                  <CardHeader className="py-4">
+                    <div className="flex items-center gap-3">
+                      <Folder className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-lg">Uncategorized</CardTitle>
+                      <Badge variant="outline">{uncategorizedProducts.length} products</Badge>
                     </div>
-                    <div className="absolute top-3 left-3">
-                      <Button size="icon" variant="secondary" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); handleOpenProduct(item.productId); }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <CardContent className="p-4 space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-lg line-clamp-1">{item.productName}</h3>
-                      <p className="text-sm text-muted-foreground">{item.variant_name}</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                        <span>{item.categoryName}</span>
-                        {item.sku && (
-                          <>
-                            <span>•</span>
-                            <span>{item.sku}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <StockEditorGrid 
-                        item={item} 
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {uncategorizedProducts.map((product) => (
+                      <ProductGroup
+                        key={product.id}
+                        product={product}
                         onUpdate={handleStockUpdate}
-                        isUpdating={updateVariant.isPending}
                       />
-                    </div>
+                    ))}
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Product Detail Dialog */}
-      <ProductDetailDialog
-        product={selectedProduct}
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) setSelectedProduct(null);
-        }}
-      />
     </div>
+  );
+}
+
+export default function InventoryPageWrapper() {
+  return (
+    <ErrorBoundary>
+      <InventoryPage />
+    </ErrorBoundary>
   );
 }

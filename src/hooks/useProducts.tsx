@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,7 +20,7 @@ export function useCategories() {
         .from('categories')
         .select('*')
         .order('display_order');
-      
+
       if (error) throw error;
       return data as Category[];
     },
@@ -38,15 +39,35 @@ export function useProducts(categoryId?: string) {
           variants:product_variants(*)
         `)
         .order('name');
-      
+
       if (categoryId) {
         query = query.eq('category_id', categoryId);
       }
-      
+
       const { data, error } = await query;
-      
+
       if (error) throw error;
-      return data as Product[];
+
+      // Sort variants to ensure stable order
+      const products = data as Product[];
+      return products.map(product => ({
+        ...product,
+        variants: product.variants?.sort((a, b) => {
+          // Sort logic: 2 Step, 3 Step, 4 Step, etc.
+          const aName = a.variant_name || '';
+          const bName = b.variant_name || '';
+
+          // numeric sort if starts with digit
+          const aMatch = aName.match(/^(\d+)/);
+          const bMatch = bName.match(/^(\d+)/);
+
+          if (aMatch && bMatch) {
+            return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+          }
+
+          return aName.localeCompare(bName);
+        })
+      }));
     },
   });
 }
@@ -64,7 +85,7 @@ export function useProduct(productId: string) {
         `)
         .eq('id', productId)
         .single();
-      
+
       if (error) throw error;
       return data as Product;
     },
@@ -74,7 +95,7 @@ export function useProduct(productId: string) {
 
 export function useCreateProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (product: TablesInsert<'products'>) => {
       const { data, error } = await supabase
@@ -82,7 +103,7 @@ export function useCreateProduct() {
         .insert(product)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -98,7 +119,7 @@ export function useCreateProduct() {
 
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, ...product }: TablesUpdate<'products'> & { id: string }) => {
       const { data, error } = await supabase
@@ -107,7 +128,7 @@ export function useUpdateProduct() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -123,14 +144,14 @@ export function useUpdateProduct() {
 
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (productId: string) => {
       const { error } = await supabase
         .from('products')
         .delete()
         .eq('id', productId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -146,7 +167,7 @@ export function useDeleteProduct() {
 // Variant mutations
 export function useCreateVariant() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (variant: TablesInsert<'product_variants'>) => {
       const { data, error } = await supabase
@@ -154,7 +175,7 @@ export function useCreateVariant() {
         .insert(variant)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -171,7 +192,7 @@ export function useCreateVariant() {
 
 export function useUpdateVariant() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, ...variant }: TablesUpdate<'product_variants'> & { id: string }) => {
       const { data, error } = await supabase
@@ -180,31 +201,66 @@ export function useUpdateVariant() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    // Optimistic update - update UI immediately before server responds
+    onMutate: async (newVariant) => {
+      console.log('Starting optimistic update for variant:', newVariant.id, 'New Stock:', newVariant.stock_quantity);
+
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['products'] });
+
+      // Snapshot the previous value
+      const previousProducts = queryClient.getQueryData<Product[]>(['products']);
+
+      // Optimistically update the cache
+      queryClient.setQueryData(['products'], (old: Product[] | undefined) => {
+        if (!old) return old;
+        return old.map(product => ({
+          ...product,
+          variants: product.variants?.map(v =>
+            v.id === newVariant.id
+              ? { ...v, ...newVariant }
+              : v
+          )
+        }));
+      });
+
+      // Return context with the snapshot
+      return { previousProducts };
+    },
+    onSuccess: (data, variables) => {
+      console.log('Stock update successful for:', variables.id, 'New Stock:', data.stock_quantity);
+      toast.success(`Stock updated: ${data.stock_quantity} units`);
+    },
+    onError: (error, newVariant, context) => {
+      console.error('Stock update failed:', error);
+      // Rollback on error
+      if (context?.previousProducts) {
+        queryClient.setQueryData(['products'], context.previousProducts);
+      }
+      toast.error('Failed to update: ' + error.message);
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure cache is in sync
       queryClient.invalidateQueries({ queryKey: ['products'] });
       queryClient.invalidateQueries({ queryKey: ['product'] });
-      toast.success('Variant updated successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to update variant: ' + error.message);
     },
   });
 }
 
 export function useDeleteVariant() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (variantId: string) => {
       const { error } = await supabase
         .from('product_variants')
         .delete()
         .eq('id', variantId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -221,7 +277,7 @@ export function useDeleteVariant() {
 // Category mutations
 export function useCreateCategory() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (category: TablesInsert<'categories'>) => {
       const { data, error } = await supabase
@@ -229,7 +285,7 @@ export function useCreateCategory() {
         .insert(category)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -245,7 +301,7 @@ export function useCreateCategory() {
 
 export function useUpdateCategory() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ id, ...category }: TablesUpdate<'categories'> & { id: string }) => {
       const { data, error } = await supabase
@@ -254,7 +310,7 @@ export function useUpdateCategory() {
         .eq('id', id)
         .select()
         .single();
-      
+
       if (error) throw error;
       return data;
     },
@@ -270,14 +326,14 @@ export function useUpdateCategory() {
 
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (categoryId: string) => {
       const { error } = await supabase
         .from('categories')
         .delete()
         .eq('id', categoryId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {

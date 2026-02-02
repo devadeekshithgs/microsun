@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import microsunLogo from '@/assets/microsun-logo.png';
 import { loginSchema, type LoginFormValues } from '@/lib/validations';
 
@@ -65,21 +65,18 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
       });
       
-      if (result.error) {
-        toast.error(result.error.message);
+      if (error) {
+        toast.error(error.message);
         setGoogleLoading(false);
-        return;
       }
-      
-      // If not redirected (i.e., OAuth completed), navigate to home
-      if (!result.redirected) {
-        toast.success('Welcome!');
-        navigate('/');
-      }
+      // Browser will redirect to Google OAuth, no need to navigate
     } catch (error) {
       toast.error('Failed to sign in with Google');
       setGoogleLoading(false);
