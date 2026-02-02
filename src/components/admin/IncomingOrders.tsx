@@ -16,102 +16,24 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
-interface IncomingOrdersProps {
-  orders: Order[];
-}
-
-function OrderDetailsDialog({ order }: { order: Order }) {
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
-          <Eye className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Order {order.order_number}</DialogTitle>
-          <DialogDescription>
-            Placed on {format(new Date(order.created_at), 'dd MMM yyyy, HH:mm')}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-medium text-sm mb-2">Customer Details</h4>
-              <div className="space-y-1 text-sm">
-                <p><span className="text-muted-foreground">Name:</span> {order.client?.full_name}</p>
-                <p><span className="text-muted-foreground">Company:</span> {order.client?.company_name || '-'}</p>
-                <p><span className="text-muted-foreground">Email:</span> {order.client?.email}</p>
-                <p><span className="text-muted-foreground">Phone:</span> {order.client?.phone || '-'}</p>
-              </div>
-            </div>
-            {order.notes && (
-              <div>
-                <h4 className="font-medium text-sm mb-2">Order Notes</h4>
-                <p className="text-sm text-muted-foreground bg-muted p-3 rounded">
-                  {order.notes}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <h4 className="font-medium text-sm mb-2">Order Items</h4>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Variant</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {order.items?.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {item.variant?.product?.image_url ? (
-                            <img
-                              src={item.variant.product.image_url}
-                              alt={item.variant.product.name}
-                              className="h-10 w-10 rounded object-cover"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                              <Package className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          {item.variant?.product?.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>{item.variant?.variant_name}</TableCell>
-                      <TableCell className="text-right font-medium">{item.quantity}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 // Import useWorkers
 import { useWorkers } from '@/hooks/useWorkers';
 import { useAssignOrder } from '@/hooks/useOrders';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users } from 'lucide-react';
+import { Users, Loader2 } from 'lucide-react';
 
-export function IncomingOrders({ orders }: IncomingOrdersProps) {
+interface IncomingOrdersProps {
+  orders: Order[];
+  isLoading?: boolean;
+}
+
+export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
   const updateStatus = useUpdateOrderStatus();
   const assignOrder = useAssignOrder();
   const { data: workers } = useWorkers();
 
-  const pendingOrders = orders.filter(order => order.status === 'pending');
+  // Orders are already filtered by the hook
+  const pendingOrders = orders;
 
   const handleApprove = async (orderId: string) => {
     try {
@@ -139,6 +61,25 @@ export function IncomingOrders({ orders }: IncomingOrdersProps) {
       toast.error('Failed to assign order');
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Incoming Orders
+          </CardTitle>
+          <CardDescription>Checking for new orders...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (pendingOrders.length === 0) {
     return (

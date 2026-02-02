@@ -37,7 +37,8 @@ function AssignTaskDialog({ worker, onSuccess }: { worker: WorkerWithStats; onSu
   const [orderId, setOrderId] = useState<string>('');
   const [dueDate, setDueDate] = useState('');
 
-  const { data: orders } = useOrders();
+  // Optimize: exclude pending orders since we filter them out anyway
+  const { data: orders } = useOrders({ excludeStatus: 'pending' });
   const createAssignment = useCreateAssignment();
 
   const activeOrders = orders?.filter(o => o.status !== 'delivered' && o.status !== 'pending') || [];

@@ -2,22 +2,26 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, Loader2 } from 'lucide-react';
-import { useOrders } from '@/hooks/useOrders';
+import { useOrders, useIncomingOrders, useKanbanOrders } from '@/hooks/useOrders';
 import { IncomingOrders } from '@/components/admin/IncomingOrders';
 import { OrderKanban } from '@/components/admin/OrderKanban';
 
 export default function OrdersPage() {
-  const { data: orders, isLoading } = useOrders();
+  // Fetch orders separately to optimize performance
+  const { data: incomingOrders, isLoading: isLoadingIncoming } = useIncomingOrders();
+  const { data: kanbanOrders, isLoading: isLoadingKanban } = useKanbanOrders();
 
-  if (isLoading) {
+  const allIncoming = incomingOrders || [];
+  const allKanban = kanbanOrders || [];
+  const hasOrders = allIncoming.length > 0 || allKanban.length > 0;
+
+  if (isLoadingIncoming && isLoadingKanban) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
-
-  const allOrders = orders || [];
 
   return (
     <div className="space-y-6">
@@ -26,7 +30,7 @@ export default function OrdersPage() {
         <p className="text-muted-foreground">Manage and track all client orders.</p>
       </div>
 
-      {allOrders.length === 0 ? (
+      {!hasOrders && !isLoadingIncoming && !isLoadingKanban ? (
         <Card>
           <CardHeader>
             <CardTitle>All Orders</CardTitle>
@@ -45,7 +49,7 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-6">
           {/* Incoming Orders Section */}
-          <IncomingOrders orders={allOrders} />
+          <IncomingOrders orders={allIncoming} isLoading={isLoadingIncoming} />
 
           {/* Kanban Board Section */}
           <Card>
@@ -56,7 +60,13 @@ export default function OrdersPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <OrderKanban orders={allOrders} />
+              {isLoadingKanban ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <OrderKanban orders={allKanban} />
+              )}
             </CardContent>
           </Card>
         </div>

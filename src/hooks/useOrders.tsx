@@ -41,11 +41,16 @@ export interface Order {
   items?: OrderItem[];
 }
 
-export function useOrders() {
+interface UseOrdersOptions {
+  status?: OrderStatus;
+  excludeStatus?: OrderStatus;
+}
+
+export function useOrders(options: UseOrdersOptions = {}) {
   return useQuery({
-    queryKey: ['orders'],
+    queryKey: ['orders', options],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select(`
           *,
@@ -64,11 +69,29 @@ export function useOrders() {
         `)
         .order('created_at', { ascending: false });
 
+      if (options.status) {
+        query = query.eq('status', options.status);
+      }
+
+      if (options.excludeStatus) {
+        query = query.neq('status', options.excludeStatus);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      return data as unknown as Order[]; // Fixed duplicate error check and cast
+      return data as unknown as Order[];
     },
     staleTime: 1000 * 30, // 30 seconds
   });
+}
+
+export function useIncomingOrders() {
+  return useOrders({ status: 'pending' });
+}
+
+export function useKanbanOrders() {
+  return useOrders({ excludeStatus: 'pending' });
 }
 
 export function useUpdateOrderStatus() {
