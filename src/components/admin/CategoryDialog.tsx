@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { useCreateCategory, useUpdateCategory, type Category } from '@/hooks/useProducts';
+import { categorySchema, type CategoryFormValues } from '@/lib/validations';
 
 interface CategoryDialogProps {
   open: boolean;
@@ -16,110 +19,144 @@ interface CategoryDialogProps {
 export function CategoryDialog({ open, onOpenChange, category }: CategoryDialogProps) {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    display_order: 0,
-    is_active: true,
+
+  const form = useForm<CategoryFormValues>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      displayOrder: 0,
+      isActive: true,
+    },
   });
-  
+
   useEffect(() => {
-    if (category) {
-      setFormData({
-        name: category.name,
-        description: category.description || '',
-        display_order: category.display_order ?? 0,
-        is_active: category.is_active ?? true,
-      });
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        display_order: 0,
-        is_active: true,
-      });
+    if (open) {
+      if (category) {
+        form.reset({
+          name: category.name,
+          description: category.description || '',
+          displayOrder: category.display_order ?? 0,
+          isActive: category.is_active ?? true,
+        });
+      } else {
+        form.reset({
+          name: '',
+          description: '',
+          displayOrder: 0,
+          isActive: true,
+        });
+      }
     }
-  }, [category, open]);
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  }, [category, open, form]);
+
+  const onSubmit = async (values: CategoryFormValues) => {
     const data = {
-      name: formData.name,
-      description: formData.description || null,
-      display_order: formData.display_order,
-      is_active: formData.is_active,
+      name: values.name.trim(),
+      description: values.description?.trim() || null,
+      display_order: values.displayOrder,
+      is_active: values.isActive,
     };
-    
+
     if (category) {
       await updateCategory.mutateAsync({ id: category.id, ...data });
     } else {
       await createCategory.mutateAsync(data);
     }
-    
+
     onOpenChange(false);
   };
-  
+
   const isLoading = createCategory.isPending || updateCategory.isPending;
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>{category ? 'Edit Category' : 'Add Category'}</DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Category Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter category name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={2}
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Enter category description" 
+                      rows={2} 
+                      {...field} 
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="display_order">Display Order</Label>
-            <Input
-              id="display_order"
-              type="number"
-              min="0"
-              value={formData.display_order}
-              onChange={(e) => setFormData({ ...formData, display_order: parseInt(e.target.value) || 0 })}
+
+            <FormField
+              control={form.control}
+              name="displayOrder"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Order</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormDescription>Lower numbers appear first</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Switch
-              id="is_active"
-              checked={formData.is_active}
-              onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+
+            <FormField
+              control={form.control}
+              name="isActive"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="!mt-0">Active</FormLabel>
+                </FormItem>
+              )}
             />
-            <Label htmlFor="is_active">Active</Label>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : category ? 'Update' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Saving...' : category ? 'Update' : 'Create'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
