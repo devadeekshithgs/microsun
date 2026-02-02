@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,8 +24,25 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user, role, loading: authLoading, isApproved } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!authLoading && user && role) {
+      if (role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (role === 'worker') {
+        navigate('/worker', { replace: true });
+      } else if (role === 'client') {
+        if (isApproved) {
+          navigate('/client', { replace: true });
+        } else {
+          navigate('/pending-approval', { replace: true });
+        }
+      }
+    }
+  }, [user, role, authLoading, isApproved, navigate]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -55,15 +72,23 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth('google', {
+      const result = await lovable.auth.signInWithOAuth('google', {
         redirect_uri: window.location.origin,
       });
-      if (error) {
-        toast.error(error.message);
+      
+      if (result.error) {
+        toast.error(result.error.message);
+        setGoogleLoading(false);
+        return;
+      }
+      
+      // If not redirected (i.e., OAuth completed), navigate to home
+      if (!result.redirected) {
+        toast.success('Welcome!');
+        navigate('/');
       }
     } catch (error) {
       toast.error('Failed to sign in with Google');
-    } finally {
       setGoogleLoading(false);
     }
   };
