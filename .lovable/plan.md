@@ -1,60 +1,185 @@
-# MicroSun OMS Implementation Plan
 
-## Completed Steps
 
-### ✅ Phase 1: Foundation
-1. **Database Schema** - Created all tables (profiles, user_roles, categories, products, product_variants, orders, order_items, order_status_history, notifications) with proper RLS policies
-2. **Authentication** - Implemented login/register with role-based access (admin, worker, client) and approval workflow
-3. **Admin Account** - Promoted devadeekshithgs@gmail.com to admin role
+# Security Fixes, Database Migration & Admin Access Plan
 
-### ✅ Phase 2: Product Catalog
-1. **Storage Bucket** - Created `product-images` bucket with proper policies for product image storage
-2. **Category Seeding** - Added 9 categories (Corner Stands, Fruit Stands, Trolleys, Shelves, Organizers, Plate Stands, Baskets, Racks, Accessories)
-3. **Product Seeding** - Added 36 products from the MicroSun catalogue with descriptions
-4. **Variant Seeding** - Added 75+ variants with SKUs and stock quantities (e.g., 2-Step, 3-Step, Small, Medium, Big)
-5. **Admin Products Page** - Built full CRUD interface for managing products, variants, and categories
-6. **Admin Inventory Page** - Built inventory overview with stock status tracking and filters
-7. **Client Products Page** - Built product browsing interface with cart functionality
+## Overview
 
-## Next Steps
+This plan addresses three major areas:
+1. **Security vulnerabilities** - Fix all RLS policies exposing data to unauthenticated users + enable leaked password protection
+2. **External Supabase migration** - Switch from Lovable Cloud to your own Supabase project
+3. **Admin access** - Grant admin role to microsun2013@gmail.com when they register
 
-### Phase 3: Order Management
-1. **Client Cart Page** - Implement cart management and order placement
-2. **Client Orders Page** - View order history and status tracking
-3. **Admin Orders Page** - Process orders (confirm, update status, add notes)
-4. **Worker Orders Page** - View confirmed orders and mark as dispatched
+---
 
-### Phase 4: Client Approval Workflow
-1. **Admin Clients Page** - Approve/reject client registrations
-2. **Pending Approval Page** - Shown to clients awaiting approval
+## Part 1: Security Fixes
 
-### Phase 5: Notifications & Realtime
-1. **Notification System** - Create notifications for order updates
-2. **Realtime Updates** - Enable realtime for orders and notifications
+### Current Security Issues
 
-### Phase 6: Dashboard & Analytics
-1. **Admin Dashboard** - Sales stats, order metrics, client activity
-2. **Client Dashboard** - Order summary, recent orders
-3. **Worker Dashboard** - Pending orders, dispatch summary
+The security scan found **10 vulnerabilities**:
 
-## Product Catalog Summary
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| Profiles table | ERROR | Customer PII exposed to unauthenticated users |
+| Orders table | ERROR | Order data accessible without auth |
+| Order items table | ERROR | Order details exposed without auth |
+| Order status history | ERROR | Processing history exposed |
+| Notifications table | ERROR | Private messages exposed |
+| Worker assignments | ERROR | Internal operations exposed |
+| Worker output | ERROR | Production metrics exposed |
+| User roles | WARN | Role assignments discoverable |
+| Product variants | WARN | Inventory levels visible to all |
+| Leaked password protection | WARN | Disabled in auth settings |
 
-From the MicroSun catalogue, the following products have been seeded:
+### Root Cause
 
-| Category | Products |
-|----------|----------|
-| Corner Stands | 9" Corner Stand, 9" Spl. Corner Stand, 12" Corner Stand, L-Corner Stand |
-| Fruit Stands | Round Fruit Stand, Round Fruit Stand Heavy, Pipe Round Fruit Trolley, Square Fruit Stand, Square Fruit Stand Heavy |
-| Trolleys | Pipe Square Fruit Trolley, Cylinder Trolley, Microwave Stand |
-| Shelves | Shelf, Small Shelf, Shelf with Hooks |
-| Organizers | Multipurpose Organizer, Filter Stand, Spice Rack, Perfume Stand, Sink Organizer, Table Organizer Lite, Table Organizer Heavy, Glass Stand |
-| Plate Stands | Round Plate Stand, Square Plate Stand, Taper Thalli Stand |
-| Baskets | Baby Basket, Square Tokra, Square Tokra Heavy, Pipe Square Tokra, Round Tokra, Pipe Round Tokra |
-| Racks | Hotpan Grid, Hanging Ladle Cradle |
-| Accessories | Hangers, Hookpatti |
+Current RLS policies only check `auth.uid()` for authenticated users, but don't explicitly **deny unauthenticated access**. This means anonymous users could potentially query these tables.
 
-## Google Drive Images
+### Solution
 
-Product images are available at: https://drive.google.com/drive/folders/12Rsl4uvbp_Mk11be7sjZR31UXPDAKN9I?usp=drive_link
+Add explicit **deny policies** for unauthenticated users on all sensitive tables:
 
-These can be uploaded to the `product-images` storage bucket and linked to products via the admin Products page.
+```text
+Tables to secure:
+┌─────────────────────┬─────────────────────────────────────────┐
+│ Table               │ Fix                                     │
+├─────────────────────┼─────────────────────────────────────────┤
+│ profiles            │ Add auth.uid() IS NOT NULL check        │
+│ orders              │ Add auth.uid() IS NOT NULL check        │
+│ order_items         │ Add auth.uid() IS NOT NULL check        │
+│ order_status_history│ Add auth.uid() IS NOT NULL check        │
+│ notifications       │ Add auth.uid() IS NOT NULL check        │
+│ worker_assignments  │ Add auth.uid() IS NOT NULL check        │
+│ worker_output       │ Add auth.uid() IS NOT NULL check        │
+│ user_roles          │ Add auth.uid() IS NOT NULL check        │
+│ product_variants    │ Create public view hiding stock fields  │
+└─────────────────────┴─────────────────────────────────────────┘
+```
+
+### Product Variants - Special Case
+
+For `product_variants`, we'll create a **public view** that exposes only non-sensitive fields:
+
+```sql
+CREATE VIEW public.product_variants_public AS
+SELECT id, product_id, variant_name, sku, image_url, is_active
+FROM public.product_variants
+WHERE is_active = true;
+-- Excludes: stock_quantity, low_stock_threshold, reorder_point
+```
+
+### Leaked Password Protection
+
+This must be enabled manually in the Cloud Dashboard under **Users → Authentication Settings → Password Protection**.
+
+---
+
+## Part 2: External Supabase Migration
+
+### Current Setup
+- App uses Lovable Cloud (auto-configured Supabase)
+- Credentials in `.env` point to `cfwghouliuuvvfvfdftg.supabase.co`
+
+### Your External Supabase Credentials
+Stored in secrets:
+- `supabase_project_url` - Your Supabase project URL
+- `supabse_anon_key` - Your Supabase anon key (note: typo in secret name)
+- `supabse_secret_key` - Your Supabase service role key
+
+### Migration Steps
+
+1. **Create new Supabase client file** - `src/integrations/supabase/external-client.ts` that uses your credentials
+2. **Update `.env`** - Point to your external Supabase project
+3. **Important**: You'll need to manually run the database migrations on your external Supabase project to create all the tables, functions, and policies
+
+### Before Migration - Required Database Setup
+
+Your external Supabase project must have:
+- All tables (profiles, orders, products, etc.)
+- All RLS policies
+- All triggers and functions
+- Storage bucket for product images
+
+I'll provide you with a **complete SQL migration script** to run in your external Supabase dashboard.
+
+---
+
+## Part 3: Admin Access for microsun2013@gmail.com
+
+### Solution
+
+Modify the `handle_new_user()` trigger function to automatically:
+1. Grant **admin role** when this email registers
+2. Set **approval_status = 'approved'** immediately
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  -- Check if this is the admin email
+  IF NEW.email = 'microsun2013@gmail.com' THEN
+    INSERT INTO public.profiles (id, email, full_name, approval_status)
+    VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 'approved');
+    
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'admin');
+  ELSE
+    -- Normal user flow
+    INSERT INTO public.profiles (id, email, full_name, approval_status)
+    VALUES (NEW.id, NEW.email, COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email), 'pending');
+    
+    INSERT INTO public.user_roles (user_id, role)
+    VALUES (NEW.id, 'client');
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
+## Technical Implementation
+
+### Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/integrations/supabase/external-client.ts` | Create | New client using your Supabase credentials |
+| Update all imports | Modify | Switch from `client.ts` to `external-client.ts` |
+| Migration SQL | Create | Security fixes + admin email trigger |
+
+### Database Migration SQL
+
+A single migration will:
+1. Update RLS policies on 8 tables to require authentication
+2. Create public view for product variants
+3. Update `handle_new_user()` for admin email detection
+
+### Code Changes
+
+1. Create external Supabase client that reads from your secrets
+2. Update client import across ~9 files that use Supabase
+
+---
+
+## Execution Order
+
+1. **Security fixes first** - Apply RLS policy updates to current database
+2. **Test security** - Verify unauthenticated access is blocked
+3. **Export migration script** - For your external Supabase
+4. **Create external client** - Point to your Supabase project
+5. **Switch client imports** - Update all files to use external client
+6. **Enable leaked password protection** - Manual step in dashboard
+7. **Test admin registration** - Register with microsun2013@gmail.com
+
+---
+
+## Important Notes
+
+1. **Data Migration**: Your external Supabase will start empty. You'll need to manually migrate any existing data from Lovable Cloud
+2. **Google OAuth**: May need to reconfigure OAuth in your external Supabase project
+3. **Storage**: Product images bucket needs to be created in your external project
+4. **Secrets Access**: The external client will need to access secrets from edge functions or environment variables
+
+Would you like me to proceed with this implementation?
+
