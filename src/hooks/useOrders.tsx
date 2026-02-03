@@ -96,6 +96,27 @@ export function useIncomingOrders() {
   return useQuery({
     queryKey: ['adminIncomingOrders'],
     queryFn: async () => {
+      console.log('Fetching admin incoming orders...');
+
+      // First, get orders with a simpler query
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('Failed to fetch incoming orders:', ordersError);
+        throw ordersError;
+      }
+
+      console.log('Basic orders fetched:', ordersData?.length || 0);
+
+      if (!ordersData || ordersData.length === 0) {
+        return [] as Order[];
+      }
+
+      // Now fetch with full details
       const { data, error } = await supabase
         .from('orders')
         .select(`
@@ -117,11 +138,16 @@ export function useIncomingOrders() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Failed to fetch incoming orders:', error);
-        throw error;
+        console.error('Failed to fetch incoming orders with details:', error);
+        // Fallback to basic orders if join fails
+        return ordersData.map(order => ({
+          ...order,
+          client: null,
+          items: []
+        })) as unknown as Order[];
       }
 
-      console.log('Incoming orders fetched:', data?.length || 0, 'orders');
+      console.log('Incoming orders fetched with details:', data?.length || 0, 'orders');
       return data as unknown as Order[];
     },
     staleTime: 1000 * 30,
@@ -165,13 +191,19 @@ export function useKanbanOrders() {
   });
 }
 
-// Hook specifically for client's "My Orders" page - explicitly filters by client_id
 export function useClientOrders() {
   return useQuery({
     queryKey: ['clientOrders'],
     queryFn: async () => {
+      console.log('Fetching client orders...');
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user) {
+        console.log('No user found, returning empty orders');
+        return [];
+      }
+
+      console.log('Fetching orders for user:', user.id);
 
       const { data, error } = await supabase
         .from('orders')
@@ -195,6 +227,8 @@ export function useClientOrders() {
         console.error('Failed to fetch client orders:', error);
         throw error;
       }
+
+      console.log('Client orders fetched:', data?.length || 0, 'orders');
       return data as unknown as Order[];
     },
     staleTime: 1000 * 30, // 30 seconds
