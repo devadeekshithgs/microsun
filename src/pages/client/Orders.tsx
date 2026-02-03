@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useOrders } from '@/hooks/useOrders';
+import { useClientOrders } from '@/hooks/useOrders';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -15,7 +15,7 @@ const statusConfig = {
 };
 
 export default function OrdersPage() {
-  const { data: orders, isLoading } = useOrders();
+  const { data: orders, isLoading } = useClientOrders();
 
   if (isLoading) {
     return (
