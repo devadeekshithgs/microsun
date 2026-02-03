@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import ClientProductCard from '@/components/client/ClientProductCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,9 +46,7 @@ function VirtualizedClientGrid({
 }: VirtualizedClientGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
-  const getColumnCount = () => {
-    if (typeof window === 'undefined') return 4;
-    const width = window.innerWidth;
+  const getColumnCount = (width: number) => {
     if (width < 640) return 1;
     if (width < 1024) return 2; // sm to lg
     if (width < 1280) return 3; // lg to xl
@@ -56,14 +54,20 @@ function VirtualizedClientGrid({
     return 5; // 2xl+
   };
 
-  const [columnCount, setColumnCount] = useState(getColumnCount);
+  const [columnCount, setColumnCount] = useState(() => {
+    if (typeof window === 'undefined') return 4;
+    return getColumnCount(window.innerWidth);
+  });
 
-  // Update column count on resize
-  useMemo(() => {
-    if (typeof window === 'undefined') return;
-    const handleResize = () => setColumnCount(getColumnCount());
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  // Update column count on resize of the container
+  useEffect(() => {
+    if (!parentRef.current) return;
+    const el = parentRef.current;
+    const update = () => setColumnCount(getColumnCount(el.clientWidth || window.innerWidth));
+    update();
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   const rows = useMemo(() => {
@@ -77,11 +81,14 @@ function VirtualizedClientGrid({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 500, // Approximate card height
-    overscan: 2,
+    estimateSize: () => 520, // Approximate card height
+    overscan: 6,
   });
 
   const virtualRows = virtualizer.getVirtualItems();
+  useEffect(() => {
+    virtualizer.measure();
+  }, [columnCount, rows.length, virtualizer]);
 
   return (
     <div ref={parentRef} className="h-[calc(100vh-250px)] overflow-auto" style={{ contain: 'strict' }}>

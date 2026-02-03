@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,23 +40,27 @@ function VirtualizedProductGrid({
 
   // Calculate columns based on a fixed breakpoint assumption
   // For simplicity, we use 4 columns (can be made responsive with resize observer)
-  const getColumnCount = () => {
-    if (typeof window === 'undefined') return 4;
-    const width = window.innerWidth;
+  const getColumnCount = (width: number) => {
     if (width < 768) return 1; // mobile
     if (width < 1024) return 2; // tablet
     if (width < 1280) return 3; // small desktop
     return 4; // large desktop
   };
 
-  const [columnCount, setColumnCount] = useState(getColumnCount);
+  const [columnCount, setColumnCount] = useState(() => {
+    if (typeof window === 'undefined') return 4;
+    return getColumnCount(window.innerWidth);
+  });
 
-  // Update column count on resize
-  useMemo(() => {
-    if (typeof window === 'undefined') return;
-    const handleResize = () => setColumnCount(getColumnCount());
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+  // Update column count on resize of the container
+  useEffect(() => {
+    if (!parentRef.current) return;
+    const el = parentRef.current;
+    const update = () => setColumnCount(getColumnCount(el.clientWidth || window.innerWidth));
+    update();
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   // Group products into rows
@@ -79,10 +83,13 @@ function VirtualizedProductGrid({
     count: rows.length,
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => getRowHeight(index),
-    overscan: 2, // Render 2 extra rows above/below viewport
+    overscan: 6, // Render extra rows above/below viewport
   });
 
   const virtualRows = virtualizer.getVirtualItems();
+  useEffect(() => {
+    virtualizer.measure();
+  }, [expandedProducts, columnCount, rows.length, virtualizer]);
 
   return (
     <div

@@ -35,11 +35,6 @@ const ClientProductCard = memo(({
     return (
         <Card
             className="overflow-hidden flex flex-col h-full bg-card"
-            style={{
-                contentVisibility: 'auto',
-                containIntrinsicSize: '0 400px', // Approximate height
-                contain: 'layout style paint',
-            }}
         >
             {/* Product Image - Large and prominent */}
             <div

@@ -41,11 +41,6 @@ const ProductCard = memo(({
     return (
         <div
             className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col bg-card"
-            style={{
-                contentVisibility: 'auto',
-                containIntrinsicSize: '0 350px',
-                contain: 'layout style paint',
-            }}
         >
             <div className="relative bg-muted overflow-hidden" style={{ height: '180px' }}>
                 {product.image_url ? (
