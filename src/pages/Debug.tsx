@@ -8,6 +8,7 @@ export default function DebugPage() {
     const [profile, setProfile] = useState<any>(null);
     const [roles, setRoles] = useState<any>(null);
     const [orders, setOrders] = useState<any>(null);
+    const [complexOrders, setComplexOrders] = useState<any>(null); // New state for complex query
     const [error, setError] = useState<any>(null);
 
     const fetchData = async () => {
@@ -40,6 +41,26 @@ export default function DebugPage() {
                 .from('orders')
                 .select('*');
             setOrders(orders || { error: ordersError });
+
+            // 5. Get Orders (Complex - Matching useOrders)
+            const { data: complexData, error: complexError } = await supabase
+                .from('orders')
+                .select(`
+          *,
+          assigned_worker_id,
+          client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
+          items:order_items(
+            id,
+            variant_id,
+            quantity,
+            variant:product_variants(
+              id,
+              variant_name,
+              product:products(id, name, image_url)
+            )
+          )
+        `);
+            setComplexOrders(complexData || { error: complexError });
 
         } catch (e) {
             setError(e);
@@ -79,8 +100,13 @@ export default function DebugPage() {
                 </Card>
 
                 <Card>
-                    <CardHeader><CardTitle>Orders (Raw Fetch)</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Orders (Simple Fetch)</CardTitle></CardHeader>
                     <CardContent><pre className="text-xs overflow-auto max-h-40">{JSON.stringify(orders, null, 2)}</pre></CardContent>
+                </Card>
+
+                <Card className="col-span-2 border-primary">
+                    <CardHeader><CardTitle className="text-primary">Orders (Complex Fetch - Production)</CardTitle></CardHeader>
+                    <CardContent><pre className="text-xs overflow-auto max-h-40">{JSON.stringify(complexOrders, null, 2)}</pre></CardContent>
                 </Card>
             </div>
         </div>

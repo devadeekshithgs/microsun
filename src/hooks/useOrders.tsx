@@ -79,19 +79,90 @@ export function useOrders(options: UseOrdersOptions = {}) {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to fetch orders:', error);
+        throw error;
+      }
+
+      console.log('Orders fetched:', data?.length || 0, 'orders with options:', options);
       return data as unknown as Order[];
     },
     staleTime: 1000 * 30, // 30 seconds
   });
 }
 
+// Hook for admin incoming orders (pending status)
 export function useIncomingOrders() {
-  return useOrders({ status: 'pending' });
+  return useQuery({
+    queryKey: ['adminIncomingOrders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          assigned_worker_id,
+          client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
+          items:order_items(
+            id,
+            variant_id,
+            quantity,
+            variant:product_variants(
+              id,
+              variant_name,
+              product:products(id, name, image_url)
+            )
+          )
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch incoming orders:', error);
+        throw error;
+      }
+
+      console.log('Incoming orders fetched:', data?.length || 0, 'orders');
+      return data as unknown as Order[];
+    },
+    staleTime: 1000 * 30,
+  });
 }
 
+// Hook for admin kanban orders (all except pending)
 export function useKanbanOrders() {
-  return useOrders({ excludeStatus: 'pending' });
+  return useQuery({
+    queryKey: ['adminKanbanOrders'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          assigned_worker_id,
+          client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
+          items:order_items(
+            id,
+            variant_id,
+            quantity,
+            variant:product_variants(
+              id,
+              variant_name,
+              product:products(id, name, image_url)
+            )
+          )
+        `)
+        .neq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch kanban orders:', error);
+        throw error;
+      }
+
+      console.log('Kanban orders fetched:', data?.length || 0, 'orders');
+      return data as unknown as Order[];
+    },
+    staleTime: 1000 * 30,
+  });
 }
 
 // Hook specifically for client's "My Orders" page - explicitly filters by client_id
@@ -160,7 +231,11 @@ export function useUpdateOrderStatus() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate all order-related queries
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminIncomingOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminKanbanOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['clientOrders'] });
     },
   });
 }
@@ -182,7 +257,11 @@ export function useAssignOrder() {
       return data;
     },
     onSuccess: () => {
+      // Invalidate all order-related queries
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminIncomingOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminKanbanOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['clientOrders'] });
     },
   });
 }
@@ -254,8 +333,10 @@ export function useCreateOrder() {
       return order;
     },
     onSuccess: () => {
-      // Invalidate both orders and clientOrders queries to refresh all order lists
+      // Invalidate all order-related queries to refresh all order lists
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminIncomingOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminKanbanOrders'] });
       queryClient.invalidateQueries({ queryKey: ['clientOrders'] });
     },
   });
