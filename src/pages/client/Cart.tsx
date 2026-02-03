@@ -29,8 +29,7 @@ export default function CartPage() {
     try {
       const items = cartItems.map(item => ({
         variant_id: item.variant.id,
-        quantity: item.quantity,
-        is_make_to_order: item.isMakeToOrder || false
+        quantity: item.quantity
       }));
 
       await createOrder.mutateAsync({ items, notes });

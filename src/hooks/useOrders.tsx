@@ -308,7 +308,7 @@ export function useCreateOrder() {
       items,
       notes
     }: {
-      items: { variant_id: string; quantity: number; is_make_to_order?: boolean }[];
+      items: { variant_id: string; quantity: number }[];
       notes?: string
     }) => {
       // 1. Get current user
@@ -349,12 +349,11 @@ export function useCreateOrder() {
 
       console.log('Order created successfully:', order);
 
-      // 4. Create order items with is_make_to_order flag
+      // 4. Create order items
       const orderItems = items.map(item => ({
         order_id: order.id,
         variant_id: item.variant_id,
-        quantity: item.quantity,
-        is_make_to_order: item.is_make_to_order || false
+        quantity: item.quantity
       }));
 
       const { error: itemsError } = await supabase
@@ -366,7 +365,7 @@ export function useCreateOrder() {
         throw itemsError;
       }
 
-      console.log('Order items created successfully with MTO flags');
+      console.log('Order items created successfully');
       return order;
     },
     onSuccess: () => {
