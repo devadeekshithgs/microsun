@@ -26,9 +26,9 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Incoming Orders
+            Order History
           </CardTitle>
-          <CardDescription>Checking for new orders...</CardDescription>
+          <CardDescription>Loading order history...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex justify-center p-8">
@@ -45,15 +45,15 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Incoming Orders
+            Order History
           </CardTitle>
-          <CardDescription>New orders awaiting approval</CardDescription>
+          <CardDescription>All client orders</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">No pending orders</p>
-            <p className="text-sm text-muted-foreground mt-1">New orders will appear here for approval</p>
+            <p className="text-muted-foreground">No orders yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Orders from clients will appear here</p>
           </div>
         </CardContent>
       </Card>
@@ -71,10 +71,10 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
         <div>
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Incoming Orders
-            <Badge variant="destructive" className="ml-2">{orders.length} new</Badge>
+            All Orders
+            <Badge variant="secondary" className="ml-2">{orders.length} total</Badge>
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">Click on a card to view details and take action</p>
+          <p className="text-sm text-muted-foreground mt-1">Click on a card to view details and manage status</p>
         </div>
         <div className="flex items-center gap-2">
           {mtoCount > 0 && (

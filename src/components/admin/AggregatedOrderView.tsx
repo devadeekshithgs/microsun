@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { BarChart3, Users, Package, Search, ExternalLink, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { BarChart3, Users, Package, Search, ExternalLink, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, ArrowLeft, User, Building2 } from 'lucide-react';
 import type { Order } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
 
@@ -28,7 +29,7 @@ interface ProductSummary {
 
 export function AggregatedOrderView({ orders }: AggregatedOrderViewProps) {
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedClient, setSelectedClient] = useState<string | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<ProductSummary | null>(null);
     const { data: products } = useProducts();
 
     // Build product summary from all orders
@@ -114,14 +115,6 @@ export function AggregatedOrderView({ orders }: AggregatedOrderViewProps) {
         p.variantName.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Get orders for selected client
-    const clientOrders = useMemo(() => {
-        if (!selectedClient) return [];
-        return orders.filter(o => o.client_id === selectedClient);
-    }, [orders, selectedClient]);
-
-    const selectedClientInfo = clients.find(c => c.id === selectedClient);
-
     const getStockStatus = (qty: number, threshold: number, ordered: number) => {
         const remaining = qty - ordered;
         if (remaining <= 0) return { status: 'out', color: 'destructive' };
@@ -153,208 +146,279 @@ export function AggregatedOrderView({ orders }: AggregatedOrderViewProps) {
 
                     {/* Product Summary Tab */}
                     <TabsContent value="products" className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <Search className="h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search products..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="max-w-sm"
-                            />
-                        </div>
-
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="w-[300px]">Product / Variant</TableHead>
-                                        <TableHead className="text-center">Total Ordered</TableHead>
-                                        <TableHead className="text-center">Make to Order</TableHead>
-                                        <TableHead className="text-center">In Stock</TableHead>
-                                        <TableHead className="text-center">After Order</TableHead>
-                                        <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredProducts.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                No products found
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredProducts.map(product => {
-                                            const remaining = product.stockQuantity - (product.totalQuantity - product.mtoQuantity);
-                                            const stockStatus = getStockStatus(product.stockQuantity, product.lowStockThreshold, product.totalQuantity - product.mtoQuantity);
-
-                                            return (
-                                                <TableRow key={product.variantId}>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-3">
-                                                            {product.imageUrl ? (
-                                                                <img
-                                                                    src={product.imageUrl}
-                                                                    alt=""
-                                                                    className="h-10 w-10 rounded object-cover"
-                                                                />
-                                                            ) : (
-                                                                <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                                                                    <Package className="h-5 w-5 text-muted-foreground" />
-                                                                </div>
-                                                            )}
-                                                            <div>
-                                                                <p className="font-medium">{product.productName}</p>
-                                                                <p className="text-sm text-muted-foreground">{product.variantName}</p>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-center font-semibold text-lg">
-                                                        {product.totalQuantity}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        {product.mtoQuantity > 0 ? (
-                                                            <Badge variant="outline" className="border-orange-400 text-orange-600">
-                                                                {product.mtoQuantity}
-                                                            </Badge>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">-</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">{product.stockQuantity}</TableCell>
-                                                    <TableCell className="text-center font-medium">
-                                                        <span className={remaining < 0 ? 'text-destructive' : ''}>
-                                                            {remaining}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {stockStatus.status === 'out' ? (
-                                                            <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                                                                <AlertTriangle className="h-3 w-3" />
-                                                                Out of Stock
-                                                            </Badge>
-                                                        ) : stockStatus.status === 'low' ? (
-                                                            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 flex items-center gap-1 w-fit">
-                                                                <AlertTriangle className="h-3 w-3" />
-                                                                Low Stock
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="secondary" className="bg-green-100 text-green-800 flex items-center gap-1 w-fit">
-                                                                <CheckCircle className="h-3 w-3" />
-                                                                In Stock
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </TabsContent>
-
-                    {/* Client View Tab */}
-                    <TabsContent value="clients" className="space-y-4">
-                        {!selectedClient ? (
-                            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                                {clients.map(client => {
-                                    const clientOrderCount = orders.filter(o => o.client_id === client.id).length;
-                                    const totalItems = orders
-                                        .filter(o => o.client_id === client.id)
-                                        .reduce((acc, o) => acc + (o.items?.reduce((a, i) => a + i.quantity, 0) || 0), 0);
-
-                                    return (
-                                        <Card
-                                            key={client.id}
-                                            className="cursor-pointer hover:border-primary/50 transition-colors"
-                                            onClick={() => setSelectedClient(client.id)}
-                                        >
-                                            <CardContent className="p-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <p className="font-medium">{client.name}</p>
-                                                        {client.company && (
-                                                            <p className="text-sm text-muted-foreground">{client.company}</p>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <Badge variant="secondary">{clientOrderCount} orders</Badge>
-                                                        <p className="text-sm text-muted-foreground mt-1">{totalItems} items</p>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="font-semibold text-lg">{selectedClientInfo?.name}</h3>
-                                        {selectedClientInfo?.company && (
-                                            <p className="text-muted-foreground">{selectedClientInfo.company}</p>
-                                        )}
-                                    </div>
-                                    <Button variant="outline" onClick={() => setSelectedClient(null)}>
-                                        Back to All Clients
-                                    </Button>
+                        {!selectedProduct ? (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <Search className="h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search products..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="max-w-sm"
+                                    />
                                 </div>
 
                                 <div className="rounded-md border">
                                     <Table>
                                         <TableHeader>
                                             <TableRow className="bg-muted/50">
-                                                <TableHead>Product</TableHead>
-                                                <TableHead>Variant</TableHead>
-                                                <TableHead className="text-center">Quantity</TableHead>
-                                                <TableHead className="text-center">Stock Available</TableHead>
-                                                <TableHead>Type</TableHead>
+                                                <TableHead className="w-[300px]">Product / Variant</TableHead>
+                                                <TableHead className="text-center">Total Ordered</TableHead>
+                                                <TableHead className="text-center">Make to Order</TableHead>
+                                                <TableHead className="text-center">In Stock</TableHead>
+                                                <TableHead className="text-center">After Order</TableHead>
+                                                <TableHead>Status</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {clientOrders.flatMap(order =>
-                                                order.items?.map(item => {
-                                                    const productInfo = productSummary.find(p => p.variantId === item.variant_id);
-                                                    const isMTO = (item as any).is_make_to_order;
+                                            {filteredProducts.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                                        No products found
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                filteredProducts.map(product => {
+                                                    const remaining = product.stockQuantity - (product.totalQuantity - product.mtoQuantity);
+                                                    const stockStatus = getStockStatus(product.stockQuantity, product.lowStockThreshold, product.totalQuantity - product.mtoQuantity);
 
                                                     return (
-                                                        <TableRow key={item.id}>
+                                                        <TableRow key={product.variantId}>
                                                             <TableCell>
-                                                                <div className="flex items-center gap-2">
-                                                                    {item.variant?.product?.image_url ? (
+                                                                <div className="flex items-center gap-3">
+                                                                    {product.imageUrl ? (
                                                                         <img
-                                                                            src={item.variant.product.image_url}
+                                                                            src={product.imageUrl}
                                                                             alt=""
-                                                                            className="h-8 w-8 rounded object-cover"
+                                                                            className="h-10 w-10 rounded object-cover"
                                                                         />
                                                                     ) : (
-                                                                        <div className="h-8 w-8 rounded bg-muted" />
+                                                                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                                                            <Package className="h-5 w-5 text-muted-foreground" />
+                                                                        </div>
                                                                     )}
-                                                                    <span className="font-medium">{item.variant?.product?.name}</span>
+                                                                    <div>
+                                                                        <p className="font-medium">{product.productName}</p>
+                                                                        <p className="text-sm text-muted-foreground">{product.variantName}</p>
+                                                                    </div>
                                                                 </div>
                                                             </TableCell>
-                                                            <TableCell>{item.variant?.variant_name}</TableCell>
-                                                            <TableCell className="text-center font-semibold">{item.quantity}</TableCell>
-                                                            <TableCell className="text-center">{productInfo?.stockQuantity || 0}</TableCell>
-                                                            <TableCell>
-                                                                {isMTO ? (
+                                                            <TableCell
+                                                                className="text-center font-semibold text-lg cursor-pointer hover:text-primary hover:underline transition-colors"
+                                                                onClick={() => setSelectedProduct(product)}
+                                                                title="Click to view customers"
+                                                            >
+                                                                {product.totalQuantity}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                {product.mtoQuantity > 0 ? (
                                                                     <Badge variant="outline" className="border-orange-400 text-orange-600">
-                                                                        Make to Order
+                                                                        {product.mtoQuantity}
                                                                     </Badge>
                                                                 ) : (
-                                                                    <Badge variant="secondary">In Stock</Badge>
+                                                                    <span className="text-muted-foreground">-</span>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">{product.stockQuantity}</TableCell>
+                                                            <TableCell className="text-center font-medium">
+                                                                <span className={remaining < 0 ? 'text-destructive' : ''}>
+                                                                    {remaining}
+                                                                </span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {stockStatus.status === 'out' ? (
+                                                                    <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                                                                        <AlertTriangle className="h-3 w-3" />
+                                                                        Out of Stock
+                                                                    </Badge>
+                                                                ) : stockStatus.status === 'low' ? (
+                                                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 flex items-center gap-1 w-fit">
+                                                                        <AlertTriangle className="h-3 w-3" />
+                                                                        Low Stock
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="secondary" className="bg-green-100 text-green-800 flex items-center gap-1 w-fit">
+                                                                        <CheckCircle className="h-3 w-3" />
+                                                                        In Stock
+                                                                    </Badge>
                                                                 )}
                                                             </TableCell>
                                                         </TableRow>
                                                     );
-                                                }) || []
+                                                })
                                             )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-4">
+                                <Button variant="ghost" onClick={() => setSelectedProduct(null)} className="gap-2">
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Back to Summary
+                                </Button>
+
+                                <Card className="bg-primary/5 border-primary/20">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-4">
+                                            {selectedProduct.imageUrl ? (
+                                                <img
+                                                    src={selectedProduct.imageUrl}
+                                                    alt=""
+                                                    className="h-16 w-16 rounded object-cover"
+                                                />
+                                            ) : (
+                                                <div className="h-16 w-16 rounded bg-muted flex items-center justify-center">
+                                                    <Package className="h-8 w-8 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                            <div>
+                                                <CardTitle>{selectedProduct.productName}</CardTitle>
+                                                <CardDescription className="text-base">{selectedProduct.variantName}</CardDescription>
+                                            </div>
+                                            <div className="ml-auto text-right">
+                                                <p className="text-3xl font-bold text-primary">{selectedProduct.totalQuantity}</p>
+                                                <p className="text-sm text-muted-foreground">Total Ordered</p>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                </Card>
+
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="bg-muted/50">
+                                                <TableHead>Client Name</TableHead>
+                                                <TableHead>Company</TableHead>
+                                                <TableHead className="text-center">Quantity Ordered</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {selectedProduct.clientOrders.map((clientOrder, idx) => (
+                                                <TableRow key={idx}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <User className="h-4 w-4 text-muted-foreground" />
+                                                            <span className="font-medium">{clientOrder.clientName}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {clientOrder.companyName ? (
+                                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                                <Building2 className="h-4 w-4" />
+                                                                {clientOrder.companyName}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">-</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge variant="secondary" className="text-base px-3 py-1">
+                                                            {clientOrder.quantity}
+                                                        </Badge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
                                         </TableBody>
                                     </Table>
                                 </div>
                             </div>
                         )}
+                    </TabsContent>
+
+                    {/* Client View Tab */}
+                    <TabsContent value="clients" className="space-y-3">
+                        {clients.map(client => {
+                            const clientOrdersData = orders.filter(o => o.client_id === client.id);
+                            const totalItems = clientOrdersData.reduce((acc, o) => acc + (o.items?.reduce((a, i) => a + i.quantity, 0) || 0), 0);
+
+                            return (
+                                <Collapsible key={client.id} className="border rounded-lg">
+                                    <CollapsibleTrigger className="w-full">
+                                        <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                                            <div className="flex items-center gap-3 flex-1 text-left">
+                                                <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-90" />
+                                                <div>
+                                                    <p className="font-semibold">{client.name}</p>
+                                                    {client.company && (
+                                                        <p className="text-sm text-muted-foreground">{client.company}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <p className="text-sm text-muted-foreground">Orders</p>
+                                                    <p className="font-semibold">{clientOrdersData.length}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-sm text-muted-foreground">Items</p>
+                                                    <p className="font-semibold">{totalItems}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                        <div className="border-t p-4 bg-muted/20">
+                                            <div className="rounded-md border bg-background">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow className="bg-muted/50">
+                                                            <TableHead>Product</TableHead>
+                                                            <TableHead>Variant</TableHead>
+                                                            <TableHead className="text-center">Quantity</TableHead>
+                                                            <TableHead>Type</TableHead>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {clientOrdersData.flatMap(order =>
+                                                            order.items?.map(item => {
+                                                                const isMTO = (item as any).is_make_to_order;
+
+                                                                return (
+                                                                    <TableRow key={item.id}>
+                                                                        <TableCell>
+                                                                            <div className="flex items-center gap-2">
+                                                                                {item.variant?.product?.image_url ? (
+                                                                                    <img
+                                                                                        src={item.variant.product.image_url}
+                                                                                        alt=""
+                                                                                        className="h-10 w-10 rounded object-cover"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                                                                        <Package className="h-5 w-5 text-muted-foreground" />
+                                                                                    </div>
+                                                                                )}
+                                                                                <span className="font-medium">{item.variant?.product?.name}</span>
+                                                                            </div>
+                                                                        </TableCell>
+                                                                        <TableCell>{item.variant?.variant_name}</TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            <Badge variant="secondary" className="text-base px-3 py-1">
+                                                                                {item.quantity}
+                                                                            </Badge>
+                                                                        </TableCell>
+                                                                        <TableCell>
+                                                                            {isMTO ? (
+                                                                                <Badge variant="outline" className="border-orange-400 text-orange-600">
+                                                                                    Make to Order
+                                                                                </Badge>
+                                                                            ) : (
+                                                                                <Badge variant="secondary">In Stock</Badge>
+                                                                            )}
+                                                                        </TableCell>
+                                                                    </TableRow>
+                                                                );
+                                                            }) || []
+                                                        )}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </div>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            );
+                        })}
                     </TabsContent>
                 </Tabs>
             </CardContent>

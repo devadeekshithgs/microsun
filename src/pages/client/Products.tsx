@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import ClientProductCard from '@/components/client/ClientProductCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, ShoppingCart, Package, Plus, Minus, LayoutGrid, List } from 'lucide-react';
-import { useProducts, useCategories, type Product, type ProductVariant } from '@/hooks/useProducts';
+import { Search, ShoppingCart, Package, Plus, Minus, LayoutGrid, List, ChevronDown, ChevronRight, Folder, FolderOpen, AlertTriangle } from 'lucide-react';
+import { useProducts, useCategories, type Product, type ProductVariant, type Category } from '@/hooks/useProducts';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useCart } from '@/context/CartContext';
 import { getStockStatus } from '@/lib/types';
 import { toast } from 'sonner';
@@ -126,10 +127,227 @@ function VirtualizedClientGrid({
   );
 }
 
+// Client Variant Row - shows individual variant with quantity controls
+// All products are make-to-order - no stock restrictions
+function ClientVariantRow({
+  variant,
+  productName,
+  productImage,
+  cart,
+  onUpdateCart
+}: {
+  variant: ProductVariant;
+  productName: string;
+  productImage: string | null;
+  cart: Map<string, { quantity: number }>;
+  onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => void;
+}) {
+  const cartQty = cart.get(variant.id)?.quantity || 0;
+
+  return (
+    <div className="flex items-center justify-between py-3 px-4 border-b last:border-b-0 hover:bg-muted/30">
+      <div className="flex items-center gap-4 flex-1">
+        {/* Variant Image */}
+        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
+          {variant.image_url || productImage ? (
+            <img
+              src={variant.image_url || productImage || ''}
+              alt={variant.variant_name}
+              loading="lazy"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                if (e.currentTarget.nextElementSibling) {
+                  (e.currentTarget.nextElementSibling as HTMLElement).classList.remove('hidden');
+                }
+              }}
+            />
+          ) : null}
+          <Package className={`h-5 w-5 text-muted-foreground ${(variant.image_url || productImage) ? 'hidden' : ''}`} />
+        </div>
+
+        {/* Variant Details */}
+        <div className="flex-1 min-w-0">
+          <p className="font-medium truncate" title={variant.variant_name}>{variant.variant_name}</p>
+          <p className="text-xs text-muted-foreground font-mono">{variant.sku || 'No SKU'}</p>
+        </div>
+      </div>
+
+      {/* Quantity Controls - All products orderable */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9"
+          onClick={() => onUpdateCart(productName, productImage, variant, -1)}
+          disabled={cartQty === 0}
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        <Input
+          type="number"
+          min="0"
+          value={cartQty}
+          onChange={(e) => {
+            const newQty = parseInt(e.target.value) || 0;
+            const delta = newQty - cartQty;
+            if (delta !== 0) {
+              onUpdateCart(productName, productImage, variant, delta);
+            }
+          }}
+          className="w-16 h-9 text-center"
+        />
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9"
+          onClick={() => onUpdateCart(productName, productImage, variant, 1)}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Client Product Group - collapsible product with variants
+function ClientProductGroup({
+  product,
+  cart,
+  onUpdateCart,
+  defaultOpen = false
+}: {
+  product: Product;
+  cart: Map<string, { quantity: number }>;
+  onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => void;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  // Sync open state when defaultOpen changes (e.g. when search becomes active)
+  React.useEffect(() => {
+    setIsOpen(defaultOpen);
+  }, [defaultOpen]);
+
+  const variants = product.variants || [];
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border rounded-lg mb-2">
+      <CollapsibleTrigger className="w-full">
+        <div className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-t-lg">
+          <div className="flex items-center gap-3">
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+
+            {/* Product Image - Medium Size */}
+            <div className="w-16 h-16 rounded bg-muted flex items-center justify-center overflow-hidden border">
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      (e.currentTarget.nextElementSibling as HTMLElement).classList.remove('hidden');
+                    }
+                  }}
+                />
+              ) : null}
+              <Package className={`h-6 w-6 text-muted-foreground ${product.image_url ? 'hidden' : ''}`} />
+            </div>
+
+            <span className="font-semibold text-left">{product.name}</span>
+            <Badge variant="outline">{variants.length} variant{variants.length !== 1 ? 's' : ''}</Badge>
+          </div>
+        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border-t">
+          {variants.map((variant) => (
+            <ClientVariantRow
+              key={variant.id}
+              variant={variant}
+              productName={product.name}
+              productImage={product.image_url}
+              cart={cart}
+              onUpdateCart={onUpdateCart}
+            />
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// Client Category Group - collapsible category section
+function ClientCategoryGroup({
+  category,
+  products,
+  cart,
+  onUpdateCart,
+  defaultOpen = false
+}: {
+  category: Category;
+  products: Product[];
+  cart: Map<string, { quantity: number }>;
+  onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => void;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  // Sync open state when defaultOpen changes
+  React.useEffect(() => {
+    setIsOpen(defaultOpen);
+  }, [defaultOpen]);
+
+  const categoryProducts = products.filter(p => p.category_id === category.id);
+  const totalVariants = categoryProducts.reduce((sum, p) => sum + (p.variants?.length || 0), 0);
+
+  if (categoryProducts.length === 0) return null;
+
+  return (
+    <Card className="mb-4">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger className="w-full">
+          <CardHeader className="py-4 hover:bg-muted/30 rounded-t-lg cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isOpen ? <FolderOpen className="h-5 w-5 text-primary" /> : <Folder className="h-5 w-5 text-primary" />}
+                <CardTitle className="text-lg text-left">{category.name}</CardTitle>
+                <Badge variant="outline" className="hidden sm:inline-flex">
+                  {categoryProducts.length} product{categoryProducts.length !== 1 ? 's' : ''} • {totalVariants} variants
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </div>
+            </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            {categoryProducts.map((product) => (
+              <ClientProductGroup
+                key={product.id}
+                product={product}
+                cart={cart}
+                onUpdateCart={onUpdateCart}
+                defaultOpen={defaultOpen}
+              />
+            ))}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
+  );
+}
+
 export default function ProductsPage() {
+
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>('bulk');
   const [activeInputs, setActiveInputs] = useState<Set<string>>(new Set());
 
   const { cart, itemCount, addToCart, updateQuantity, removeFromCart } = useCart();
@@ -139,12 +357,47 @@ export default function ProductsPage() {
   // Filter only active products and variants
   const activeProducts = products?.filter((product) => product.is_active) || [];
 
-  const filteredProducts = activeProducts.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  // Smart search filter - matches across category, product, variant names, and SKUs
+  const filteredProducts = useMemo(() => {
+    // Prepare search terms (split by space, lowercase)
+    const searchTerms = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const hasSearch = searchTerms.length > 0;
+
+    return activeProducts
+      .map(product => {
+        // Category check
+        const category = categories?.find(c => c.id === product.category_id);
+        const matchesCategoryFilter = categoryFilter === 'all' || product.category_id === categoryFilter;
+
+        if (!matchesCategoryFilter) return null;
+
+        // Search logic
+        let matchingVariants = product.variants?.filter(v => v.is_active) || [];
+
+        if (hasSearch) {
+          // Build search context with category + product info
+          const productContext = `${product.name} ${category?.name || ''}`.toLowerCase();
+
+          // Filter variants where ALL search terms match in the combined context
+          matchingVariants = matchingVariants.filter(variant => {
+            const variantContext = `${productContext} ${variant.variant_name} ${variant.sku || ''}`.toLowerCase();
+            return searchTerms.every(term => variantContext.includes(term));
+          });
+
+          // If no variants match, drop the product
+          if (matchingVariants.length === 0) {
+            return null;
+          }
+        }
+
+        // Return product with filtered variants
+        return {
+          ...product,
+          variants: matchingVariants
+        };
+      })
+      .filter((p): p is Product => p !== null && (p.variants?.length ?? 0) > 0);
+  }, [activeProducts, categories, categoryFilter, searchQuery]);
 
   // Flatten for bulk view
   const allVariants = filteredProducts.flatMap((product) =>
@@ -229,20 +482,20 @@ export default function ProductsPage() {
         </div>
         <div className="flex gap-3">
           <Button
-            variant={viewMode === 'bulk' ? 'default' : 'outline'}
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="lg"
             className="h-12 px-6"
             onClick={() => setViewMode(viewMode === 'grid' ? 'bulk' : 'grid')}
           >
-            {viewMode === 'grid' ? (
+            {viewMode === 'bulk' ? (
               <>
-                <List className="mr-2 h-5 w-5" />
-                Bulk Order
+                <LayoutGrid className="mr-2 h-5 w-5" />
+                Grid View
               </>
             ) : (
               <>
-                <LayoutGrid className="mr-2 h-5 w-5" />
-                Exit Bulk Mode
+                <List className="mr-2 h-5 w-5" />
+                Bulk Order
               </>
             )}
           </Button>
@@ -264,7 +517,7 @@ export default function ProductsPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by product name or SKU..."
+                  placeholder="Search categories, products, variants, or SKU..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 h-12"
@@ -319,106 +572,44 @@ export default function ProductsPage() {
               </p>
             </div>
           ) : viewMode === 'bulk' ? (
-            /* Bulk Order View */
-            <Card>
-              <CardHeader>
-                <CardTitle>Bulk Order</CardTitle>
-                <CardDescription>Quickly add quantities for multiple products</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[140px]">Image</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead className="text-center">Stock</TableHead>
-                        <TableHead className="text-center w-[200px]">Quantity</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {allVariants.map((variant) => {
-                        const inStock = isInStock(variant);
-                        const cartQty = cart.get(variant.id)?.quantity || 0;
+            /* Hierarchical Bulk Order View */
+            <div>
+              {/* Render categories with their products */}
+              {(categories?.filter(c => c.is_active && filteredProducts.some(p => p.category_id === c.id)) || []).map((category) => (
+                <ClientCategoryGroup
+                  key={category.id}
+                  category={category}
+                  products={filteredProducts}
+                  cart={cart}
+                  onUpdateCart={handleUpdateCart}
+                  defaultOpen={searchQuery.trim().length > 0}
+                />
+              ))}
 
-                        return (
-                          <TableRow key={variant.id} className="h-[120px]">
-                            <TableCell className="py-2">
-                              <div className="h-24 w-28 rounded-lg bg-muted overflow-hidden">
-                                {variant.productImage ? (
-                                  <img
-                                    src={variant.productImage}
-                                    alt={variant.productName}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="h-full w-full flex items-center justify-center">
-                                    <Package className="h-10 w-10 text-muted-foreground/50" />
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground font-mono text-sm">
-                              {variant.sku || '-'}
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium">{variant.productName}</div>
-                              <div className="text-sm text-muted-foreground">{variant.variant_name}</div>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {variant.categoryName}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <span className={inStock ? 'text-green-600 font-medium' : 'text-destructive font-medium'}>
-                                {variant.stock_quantity}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-10 w-10"
-                                  onClick={() => handleUpdateCart(variant.productName, variant.productImage, variant, -1)}
-                                  disabled={cartQty === 0}
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </Button>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  value={cartQty}
-                                  onChange={(e) => {
-                                    const newQty = parseInt(e.target.value) || 0;
-                                    const delta = newQty - cartQty;
-                                    if (delta !== 0) {
-                                      handleUpdateCart(variant.productName, variant.productImage, variant, delta);
-                                    }
-                                  }}
-                                  className="w-16 h-10 text-center"
-                                  disabled={!inStock}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-10 w-10"
-                                  onClick={() => handleUpdateCart(variant.productName, variant.productImage, variant, 1)}
-                                  disabled={!inStock}
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Uncategorized products */}
+              {filteredProducts.filter(p => !p.category_id).length > 0 && (
+                <Card className="mb-4">
+                  <CardHeader className="py-4">
+                    <div className="flex items-center gap-3">
+                      <Folder className="h-5 w-5 text-muted-foreground" />
+                      <CardTitle className="text-lg">Uncategorized</CardTitle>
+                      <Badge variant="outline">{filteredProducts.filter(p => !p.category_id).length} products</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {filteredProducts.filter(p => !p.category_id).map((product) => (
+                      <ClientProductGroup
+                        key={product.id}
+                        product={product}
+                        cart={cart}
+                        onUpdateCart={handleUpdateCart}
+                        defaultOpen={searchQuery.trim().length > 0}
+                      />
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           ) : (
             /* Grid View */
             /* Virtualized Grid View */

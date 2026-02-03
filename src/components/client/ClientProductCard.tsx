@@ -28,23 +28,7 @@ const ClientProductCard = memo(({
     onInputBlur,
     onActivateInput
 }: ClientProductCardProps) => {
-
-    const getStockBadge = (variant: ProductVariant) => {
-        const status = getStockStatus(variant.stock_quantity ?? 0, variant.low_stock_threshold ?? 10);
-        if (status === 'out_of_stock') {
-            return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Out of Stock</Badge>;
-        }
-        if (status === 'low_stock') {
-            return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Low Stock</Badge>;
-        }
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">In Stock</Badge>;
-    };
-
-    const isInStock = (variant: ProductVariant) => {
-        return (variant.stock_quantity ?? 0) > 0;
-    };
-
-    const inStock = isInStock(variant);
+    // All products are make-to-order - no stock visibility needed
 
     return (
         <Card
@@ -74,9 +58,6 @@ const ClientProductCard = memo(({
                         <Package className="h-20 w-20 text-muted-foreground/30" />
                     </div>
                 )}
-                <div className="absolute top-3 right-3">
-                    {getStockBadge(variant)}
-                </div>
             </div>
 
             {/* Product Info */}
@@ -87,11 +68,6 @@ const ClientProductCard = memo(({
                     </div>
                     <h3 className="font-semibold text-lg line-clamp-1" title={product.name}>{product.name}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-1" title={variant.variant_name}>{variant.variant_name}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                            Stock: {variant.stock_quantity ?? 0}
-                        </span>
-                    </div>
                 </div>
 
                 {/* Add to Cart Controls */}
@@ -126,7 +102,6 @@ const ClientProductCard = memo(({
                                 size="icon"
                                 className="h-12 w-12 shrink-0"
                                 onClick={() => onUpdateCart(product.name, product.image_url, variant, 1)}
-                                disabled={!inStock}
                             >
                                 <Plus className="h-5 w-5" />
                             </Button>
@@ -138,7 +113,6 @@ const ClientProductCard = memo(({
                                 onActivateInput(variant.id);
                                 onUpdateCart(product.name, product.image_url, variant, 1);
                             }}
-                            disabled={!inStock}
                         >
                             <Plus className="mr-2 h-5 w-5" />
                             Add to Order
