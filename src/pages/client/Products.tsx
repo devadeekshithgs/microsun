@@ -14,6 +14,7 @@ import { useCart } from '@/context/CartContext';
 import { getStockStatus } from '@/lib/types';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { ImageLightbox } from '@/components/ui/image-lightbox';
 
 type ViewMode = 'grid' | 'bulk';
 
@@ -30,6 +31,7 @@ interface VirtualizedClientGridProps {
   onSetQuantity: (productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => void;
   onInputBlur: (variantId: string) => void;
   onActivateInput: (variantId: string) => void;
+  onImageClick: (imageUrl: string, imageAlt: string) => void;
 }
 
 function VirtualizedClientGrid({
@@ -39,7 +41,8 @@ function VirtualizedClientGrid({
   onUpdateCart,
   onSetQuantity,
   onInputBlur,
-  onActivateInput
+  onActivateInput,
+  onImageClick
 }: VirtualizedClientGridProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +119,7 @@ function VirtualizedClientGrid({
                     onSetQuantity={onSetQuantity}
                     onInputBlur={onInputBlur}
                     onActivateInput={onActivateInput}
+                    onImageClick={onImageClick}
                   />
                 ))}
               </div>
@@ -134,27 +138,35 @@ function ClientVariantRow({
   productName,
   productImage,
   cart,
-  onUpdateCart
+  onUpdateCart,
+  onImageClick
 }: {
   variant: ProductVariant;
   productName: string;
   productImage: string | null;
   cart: Map<string, { quantity: number }>;
   onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => void;
+  onImageClick: (imageUrl: string, imageAlt: string) => void;
 }) {
   const cartQty = cart.get(variant.id)?.quantity || 0;
+
+  const imageUrl = variant.image_url || productImage;
 
   return (
     <div className="flex items-center justify-between py-3 px-4 border-b last:border-b-0 hover:bg-muted/30">
       <div className="flex items-center gap-4 flex-1">
-        {/* Variant Image */}
-        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border">
-          {variant.image_url || productImage ? (
+        {/* Variant Image - Clickable for fullscreen view */}
+        <div
+          className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden shrink-0 border cursor-pointer hover:ring-2 hover:ring-primary transition-all group"
+          onClick={() => imageUrl && onImageClick(imageUrl, variant.variant_name)}
+          title="Click to view full size"
+        >
+          {imageUrl ? (
             <img
-              src={variant.image_url || productImage || ''}
+              src={imageUrl}
               alt={variant.variant_name}
               loading="lazy"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
                 if (e.currentTarget.nextElementSibling) {
@@ -163,7 +175,7 @@ function ClientVariantRow({
               }}
             />
           ) : null}
-          <Package className={`h-5 w-5 text-muted-foreground ${(variant.image_url || productImage) ? 'hidden' : ''}`} />
+          <Package className={`h-5 w-5 text-muted-foreground ${imageUrl ? 'hidden' : ''}`} />
         </div>
 
         {/* Variant Details */}
@@ -216,11 +228,13 @@ function ClientProductGroup({
   product,
   cart,
   onUpdateCart,
+  onImageClick,
   defaultOpen = false
 }: {
   product: Product;
   cart: Map<string, { quantity: number }>;
   onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => void;
+  onImageClick: (imageUrl: string, imageAlt: string) => void;
   defaultOpen?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -239,14 +253,21 @@ function ClientProductGroup({
           <div className="flex items-center gap-3">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 
-            {/* Product Image - Medium Size */}
-            <div className="w-16 h-16 rounded bg-muted flex items-center justify-center overflow-hidden border">
+            {/* Product Image - Medium Size - Clickable for fullscreen view */}
+            <div
+              className="w-16 h-16 rounded bg-muted flex items-center justify-center overflow-hidden border cursor-pointer hover:ring-2 hover:ring-primary transition-all group"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (product.image_url) onImageClick(product.image_url, product.name);
+              }}
+              title="Click to view full size"
+            >
               {product.image_url ? (
                 <img
                   src={product.image_url}
                   alt={product.name}
                   loading="lazy"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     if (e.currentTarget.nextElementSibling) {
@@ -273,6 +294,7 @@ function ClientProductGroup({
               productImage={product.image_url}
               cart={cart}
               onUpdateCart={onUpdateCart}
+              onImageClick={onImageClick}
             />
           ))}
         </div>
@@ -287,12 +309,14 @@ function ClientCategoryGroup({
   products,
   cart,
   onUpdateCart,
+  onImageClick,
   defaultOpen = false
 }: {
   category: Category;
   products: Product[];
   cart: Map<string, { quantity: number }>;
   onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number) => void;
+  onImageClick: (imageUrl: string, imageAlt: string) => void;
   defaultOpen?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -334,6 +358,7 @@ function ClientCategoryGroup({
                 product={product}
                 cart={cart}
                 onUpdateCart={onUpdateCart}
+                onImageClick={onImageClick}
                 defaultOpen={defaultOpen}
               />
             ))}
@@ -350,6 +375,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('bulk');
   const [activeInputs, setActiveInputs] = useState<Set<string>>(new Set());
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; alt: string } | null>(null);
 
   const { cart, itemCount, addToCart, updateQuantity, removeFromCart } = useCart();
   const { data: products, isLoading: productsLoading } = useProducts();
@@ -457,6 +483,14 @@ export default function ProductsPage() {
 
   const activateInput = useCallback((variantId: string) => {
     setActiveInputs(prev => new Set(prev).add(variantId));
+  }, []);
+
+  const handleImageClick = useCallback((imageUrl: string, imageAlt: string) => {
+    setLightboxImage({ url: imageUrl, alt: imageAlt });
+  }, []);
+
+  const handleCloseLightbox = useCallback(() => {
+    setLightboxImage(null);
   }, []);
 
   const getStockBadge = (variant: ProductVariant) => {
@@ -583,6 +617,7 @@ export default function ProductsPage() {
                   products={filteredProducts}
                   cart={cart}
                   onUpdateCart={handleUpdateCart}
+                  onImageClick={handleImageClick}
                   defaultOpen={searchQuery.trim().length > 0}
                 />
               ))}
@@ -604,6 +639,7 @@ export default function ProductsPage() {
                         product={product}
                         cart={cart}
                         onUpdateCart={handleUpdateCart}
+                        onImageClick={handleImageClick}
                         defaultOpen={searchQuery.trim().length > 0}
                       />
                     ))}
@@ -622,10 +658,21 @@ export default function ProductsPage() {
               onSetQuantity={handleSetQuantity}
               onInputBlur={handleInputBlur}
               onActivateInput={activateInput}
+              onImageClick={handleImageClick}
             />
           )}
         </CardContent>
       </Card>
+
+      {/* Image Lightbox Modal */}
+      {lightboxImage && (
+        <ImageLightbox
+          isOpen={!!lightboxImage}
+          onClose={handleCloseLightbox}
+          imageUrl={lightboxImage.url}
+          imageAlt={lightboxImage.alt}
+        />
+      )}
     </div>
   );
 }

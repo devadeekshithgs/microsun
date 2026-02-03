@@ -16,6 +16,7 @@ interface ClientProductCardProps {
     onSetQuantity: (productName: string, productImage: string | null, variant: ProductVariant, qty: number) => void;
     onInputBlur: (variantId: string) => void;
     onActivateInput: (variantId: string) => void;
+    onImageClick: (imageUrl: string, imageAlt: string) => void;
 }
 
 const ClientProductCard = memo(({
@@ -26,7 +27,8 @@ const ClientProductCard = memo(({
     onUpdateCart,
     onSetQuantity,
     onInputBlur,
-    onActivateInput
+    onActivateInput,
+    onImageClick
 }: ClientProductCardProps) => {
     // All products are make-to-order - no stock visibility needed
 
@@ -40,14 +42,19 @@ const ClientProductCard = memo(({
             }}
         >
             {/* Product Image - Large and prominent */}
-            <div className="relative bg-muted overflow-hidden" style={{ aspectRatio: '1/1' }}>
+            <div
+                className="relative bg-muted overflow-hidden cursor-pointer group"
+                style={{ aspectRatio: '1/1' }}
+                onClick={() => product.image_url && onImageClick(product.image_url, product.name)}
+                title={product.image_url ? 'Click to view full size' : 'No image'}
+            >
                 {product.image_url ? (
                     <img
                         src={product.image_url}
                         alt={product.name}
                         loading="lazy"
                         decoding="async"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         style={{
                             aspectRatio: '1/1',
                             backgroundColor: 'hsl(var(--muted))'
