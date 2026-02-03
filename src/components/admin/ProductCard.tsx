@@ -43,10 +43,11 @@ const ProductCard = memo(({
             className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col bg-card"
             style={{
                 contentVisibility: 'auto',
-                containIntrinsicSize: '1px 350px'
+                containIntrinsicSize: '0 350px',
+                contain: 'layout style paint',
             }}
         >
-            <div className="relative aspect-video bg-muted overflow-hidden">
+            <div className="relative bg-muted overflow-hidden" style={{ height: '180px' }}>
                 {product.image_url ? (
                     <img
                         src={product.image_url}
@@ -54,6 +55,10 @@ const ProductCard = memo(({
                         loading="lazy"
                         decoding="async"
                         className="h-full w-full object-cover"
+                        style={{
+                            aspectRatio: '16/9',
+                            backgroundColor: 'hsl(var(--muted))'
+                        }}
                     />
                 ) : (
                     <div className="h-full w-full flex items-center justify-center">

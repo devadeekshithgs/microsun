@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,127 @@ import { ProductDialog } from '@/components/admin/ProductDialog';
 import { VariantDialog } from '@/components/admin/VariantDialog';
 import { CategoryDialog } from '@/components/admin/CategoryDialog';
 import ProductCard from '@/components/admin/ProductCard';
+
+// Virtualized Product Grid for performance
+interface VirtualizedProductGridProps {
+  products: Product[];
+  expandedProducts: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onEditProduct: (product: Product) => void;
+  onAddVariant: (productId: string) => void;
+  onEditVariant: (productId: string, variant: ProductVariant) => void;
+  onDeleteProduct: (id: string) => void;
+  onDeleteVariant: (id: string) => void;
+}
+
+function VirtualizedProductGrid({
+  products,
+  expandedProducts,
+  onToggleExpand,
+  onEditProduct,
+  onAddVariant,
+  onEditVariant,
+  onDeleteProduct,
+  onDeleteVariant,
+}: VirtualizedProductGridProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  // Calculate columns based on a fixed breakpoint assumption
+  // For simplicity, we use 4 columns (can be made responsive with resize observer)
+  const getColumnCount = () => {
+    if (typeof window === 'undefined') return 4;
+    const width = window.innerWidth;
+    if (width < 768) return 1; // mobile
+    if (width < 1024) return 2; // tablet
+    if (width < 1280) return 3; // small desktop
+    return 4; // large desktop
+  };
+
+  const [columnCount, setColumnCount] = useState(getColumnCount);
+
+  // Update column count on resize
+  useMemo(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => setColumnCount(getColumnCount());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Group products into rows
+  const rows = useMemo(() => {
+    const result: Product[][] = [];
+    for (let i = 0; i < products.length; i += columnCount) {
+      result.push(products.slice(i, i + columnCount));
+    }
+    return result;
+  }, [products, columnCount]);
+
+  // Estimate row height: base card ~320px, expanded adds ~200px
+  const getRowHeight = useCallback((index: number) => {
+    const row = rows[index];
+    const hasExpanded = row?.some(p => expandedProducts.has(p.id));
+    return hasExpanded ? 520 : 350; // Approximate heights
+  }, [rows, expandedProducts]);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (index) => getRowHeight(index),
+    overscan: 2, // Render 2 extra rows above/below viewport
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={parentRef}
+      className="h-[600px] overflow-auto"
+      style={{ contain: 'strict' }}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {virtualRows.map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          return (
+            <div
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+                {row.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isExpanded={expandedProducts.has(product.id)}
+                    onToggleExpand={onToggleExpand}
+                    onEditProduct={onEditProduct}
+                    onAddVariant={onAddVariant}
+                    onEditVariant={onEditVariant}
+                    onDeleteProduct={onDeleteProduct}
+                    onDeleteVariant={onDeleteVariant}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 
 export default function ProductsPage() {
@@ -224,21 +346,16 @@ export default function ProductsPage() {
                   </Button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {products.map((product) => (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      isExpanded={expandedProducts.has(product.id)}
-                      onToggleExpand={toggleProductExpanded}
-                      onEditProduct={handleEditProduct}
-                      onAddVariant={handleAddVariant}
-                      onEditVariant={handleEditVariant}
-                      onDeleteProduct={handleDeleteProduct}
-                      onDeleteVariant={handleDeleteVariant}
-                    />
-                  ))}
-                </div>
+                <VirtualizedProductGrid
+                  products={products}
+                  expandedProducts={expandedProducts}
+                  onToggleExpand={toggleProductExpanded}
+                  onEditProduct={handleEditProduct}
+                  onAddVariant={handleAddVariant}
+                  onEditVariant={handleEditVariant}
+                  onDeleteProduct={handleDeleteProduct}
+                  onDeleteVariant={handleDeleteVariant}
+                />
               )}
             </CardContent>
           </Card>

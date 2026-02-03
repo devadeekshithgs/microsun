@@ -211,6 +211,22 @@ export type CategoryFormValues = z.infer<typeof categorySchema>;
 export type WorkerAssignmentFormValues = z.infer<typeof workerAssignmentSchema>;
 export type OrderItemFormValues = z.infer<typeof orderItemSchema>;
 
+export const forgotPasswordSchema = z.object({
+  email: emailSchema,
+});
+
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  password: passwordSchema,
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
+
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
 // ============================================
 // VALIDATION HELPERS
 // ============================================

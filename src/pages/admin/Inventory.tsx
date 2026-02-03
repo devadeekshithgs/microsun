@@ -178,6 +178,12 @@ function ProductGroup({
   defaultOpen?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  // Sync open state when defaultOpen changes (e.g. when search becomes active)
+  React.useEffect(() => {
+    setIsOpen(defaultOpen);
+  }, [defaultOpen]);
+
   const variants = product.variants || [];
   const totalStock = variants.reduce((sum, v) => sum + (v.stock_quantity ?? 0), 0);
   const lowStockCount = variants.filter(v => {
@@ -209,13 +215,13 @@ function ProductGroup({
               <Package className={`h-4 w-4 text-muted-foreground ${product.image_url ? 'hidden' : ''}`} />
             </div>
 
-            <span className="font-semibold">{product.name}</span>
+            <span className="font-semibold text-left">{product.name}</span>
             <Badge variant="outline">{variants.length} variant{variants.length !== 1 ? 's' : ''}</Badge>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <span className="text-muted-foreground">Total: <span className="font-medium text-foreground">{totalStock}</span></span>
+            <span className="text-muted-foreground whitespace-nowrap">Total: <span className="font-medium text-foreground">{totalStock}</span></span>
             {lowStockCount > 0 && (
-              <Badge className="bg-amber-100 text-amber-800">
+              <Badge className="bg-amber-100 text-amber-800 whitespace-nowrap">
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 {lowStockCount} low
               </Badge>
@@ -251,6 +257,12 @@ function CategoryGroup({
   defaultOpen?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  // Sync open state when defaultOpen changes
+  React.useEffect(() => {
+    setIsOpen(defaultOpen);
+  }, [defaultOpen]);
+
   const categoryProducts = products.filter(p => p.category_id === category.id);
   const totalVariants = categoryProducts.reduce((sum, p) => sum + (p.variants?.length || 0), 0);
   const totalStock = categoryProducts.reduce((sum, p) =>
@@ -266,13 +278,13 @@ function CategoryGroup({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 {isOpen ? <FolderOpen className="h-5 w-5 text-primary" /> : <Folder className="h-5 w-5 text-primary" />}
-                <CardTitle className="text-lg">{category.name}</CardTitle>
-                <Badge variant="outline">
+                <CardTitle className="text-lg text-left">{category.name}</CardTitle>
+                <Badge variant="outline" className="hidden sm:inline-flex">
                   {categoryProducts.length} product{categoryProducts.length !== 1 ? 's' : ''} • {totalVariants} variants
                 </Badge>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground hidden sm:inline">
                   Total stock: <span className="font-semibold text-foreground">{totalStock.toLocaleString()}</span>
                 </span>
                 {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -287,6 +299,7 @@ function CategoryGroup({
                 key={product.id}
                 product={product}
                 onUpdate={onUpdate}
+                defaultOpen={defaultOpen}
               />
             ))}
           </CardContent>
@@ -311,28 +324,76 @@ function InventoryPage() {
     updateVariant.mutate({ id: variantId, stock_quantity: newStock });
   };
 
-  // Filter products based on search and filters
+  // Advanced Filter logic
   const filteredProducts = useMemo(() => {
-    return allProducts.filter((product) => {
-      const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter;
+    // 1. Prepare search terms (split by space, lowercase)
+    const searchTerms = searchQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const hasSearch = searchTerms.length > 0;
 
-      const matchesSearch = searchQuery === '' ||
-        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.variants?.some(v =>
-          v.variant_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          v.sku?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+    return allProducts
+      .map(product => {
+        // --- Category Check ---
+        const category = allCategories.find(c => c.id === product.category_id);
+        const matchesCategoryFilter = categoryFilter === 'all' || product.category_id === categoryFilter;
 
-      const matchesStock = stockFilter === 'all' || product.variants?.some(v => {
-        const status = getStockStatus(v.stock_quantity ?? 0, v.low_stock_threshold ?? 10);
-        return status === stockFilter;
-      });
+        if (!matchesCategoryFilter) return null; // Skip entire product if category doesn't match filter
 
-      return matchesCategory && matchesSearch && matchesStock;
-    }) || [];
-  }, [allProducts, categoryFilter, searchQuery, stockFilter]);
+        // --- Search Logic ---
+        let matchesSearch = true;
+        let matchingVariants = product.variants || [];
 
-  // Stats calculation
+        if (hasSearch) {
+          // Check if the Product Name or Category Name contains specific terms
+          const productContext = `${product.name} ${category?.name || ''}`.toLowerCase();
+
+          // We need to filter variants based on the terms. 
+          // A product is kept if: 
+          // 1. The product/category context matches ALL terms (then we show all variants).
+          // 2. OR individual variants match the remaining terms combined with product context.
+
+          // Actually, the user requirement is: "9\" corner 4 step" -> find that specific variant.
+          // This implies we should check if the COMBINATION of (Category + Product + Variant) contains ALL terms.
+
+          matchingVariants = (product.variants || []).filter(variant => {
+            const variantContext = `${productContext} ${variant.variant_name} ${variant.sku || ''}`.toLowerCase();
+            // Check if ALL terms are present in the full context
+            return searchTerms.every(term => variantContext.includes(term));
+          });
+
+          // Checks if the product itself matches (e.g. if I search "Kitchen", I want to see all Kitchen products)
+          // But if I search "Kitchen Corner", I only want "Corner" variants in "Kitchen".
+
+          // If NO variants match, we drop the product.
+          if (matchingVariants.length === 0) {
+            matchesSearch = false;
+          }
+        }
+
+        // --- Stock Filter Check ---
+        // If we have a stock filter, we further filter the variants
+        if (matchesSearch && stockFilter !== 'all') {
+          matchingVariants = matchingVariants.filter(v => {
+            const status = getStockStatus(v.stock_quantity ?? 0, v.low_stock_threshold ?? 10);
+            return status === stockFilter;
+          });
+
+          if (matchingVariants.length === 0) {
+            matchesSearch = false;
+          }
+        }
+
+        if (!matchesSearch) return null;
+
+        // Return a NEW product object with filtered variants
+        return {
+          ...product,
+          variants: matchingVariants
+        };
+      })
+      .filter((p): p is Product => p !== null); // Remove nulls
+  }, [allProducts, allCategories, categoryFilter, searchQuery, stockFilter]);
+
+  // Stats calculation (Keep logic simple, based on ALL products, not filtered)
   const stats = useMemo(() => {
     const allVariants = allProducts.flatMap(p => p.variants || []);
     return {
@@ -343,17 +404,19 @@ function InventoryPage() {
     };
   }, [allProducts]);
 
-  // Get filtered categories that have products
+  // Get filtered categories that have products in the filtered list
   const activeCategories = useMemo(() => {
     return allCategories.filter(c =>
       filteredProducts.some(p => p.category_id === c.id)
-    ) || [];
+    );
   }, [allCategories, filteredProducts]);
 
   // Products without category
   const uncategorizedProducts = useMemo(() => {
     return filteredProducts.filter(p => !p.category_id);
   }, [filteredProducts]);
+
+  const isSearching = searchQuery.trim().length > 0;
 
   return (
     <div className="space-y-6">
@@ -465,6 +528,7 @@ function InventoryPage() {
                   category={category}
                   products={filteredProducts}
                   onUpdate={handleStockUpdate}
+                  defaultOpen={isSearching}
                 />
               ))}
 
@@ -484,6 +548,7 @@ function InventoryPage() {
                         key={product.id}
                         product={product}
                         onUpdate={handleStockUpdate}
+                        defaultOpen={isSearching}
                       />
                     ))}
                   </CardContent>

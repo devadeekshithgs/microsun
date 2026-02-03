@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import ClientProductCard from '@/components/client/ClientProductCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +15,116 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
 type ViewMode = 'grid' | 'bulk';
+
+interface GridItem {
+  product: Product;
+  variant: ProductVariant;
+}
+
+interface VirtualizedClientGridProps {
+  items: GridItem[];
+  cart: Map<string, { quantity: number }>;
+  activeInputs: Set<string>;
+  onUpdateCart: (productName: string, productImage: string | null, variant: ProductVariant, delta: number, forceRemove?: boolean) => void;
+  onSetQuantity: (productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => void;
+  onInputBlur: (variantId: string) => void;
+  onActivateInput: (variantId: string) => void;
+}
+
+function VirtualizedClientGrid({
+  items,
+  cart,
+  activeInputs,
+  onUpdateCart,
+  onSetQuantity,
+  onInputBlur,
+  onActivateInput
+}: VirtualizedClientGridProps) {
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const getColumnCount = () => {
+    if (typeof window === 'undefined') return 4;
+    const width = window.innerWidth;
+    if (width < 640) return 1;
+    if (width < 1024) return 2; // sm to lg
+    if (width < 1280) return 3; // lg to xl
+    if (width < 1536) return 4; // xl to 2xl
+    return 5; // 2xl+
+  };
+
+  const [columnCount, setColumnCount] = useState(getColumnCount);
+
+  // Update column count on resize
+  useMemo(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => setColumnCount(getColumnCount());
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const rows = useMemo(() => {
+    const result: GridItem[][] = [];
+    for (let i = 0; i < items.length; i += columnCount) {
+      result.push(items.slice(i, i + columnCount));
+    }
+    return result;
+  }, [items, columnCount]);
+
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 500, // Approximate card height
+    overscan: 2,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+
+  return (
+    <div ref={parentRef} className="h-[calc(100vh-250px)] overflow-auto" style={{ contain: 'strict' }}>
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {virtualRows.map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          return (
+            <div
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 pb-4 px-1">
+                {row.map((item) => (
+                  <ClientProductCard
+                    key={item.variant.id}
+                    product={item.product}
+                    variant={item.variant}
+                    cartQuantity={cart.get(item.variant.id)?.quantity || 0}
+                    isActiveInput={activeInputs.has(item.variant.id)}
+                    onUpdateCart={onUpdateCart}
+                    onSetQuantity={onSetQuantity}
+                    onInputBlur={onInputBlur}
+                    onActivateInput={onActivateInput}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +156,17 @@ export default function ProductsPage() {
     }))
   );
 
-  const handleUpdateCart = (productName: string, productImage: string | null, variant: ProductVariant, delta: number, forceRemove = false) => {
+  // Flatten for grid view virtualization
+  const gridItems = useMemo(() => {
+    return filteredProducts.flatMap((product) =>
+      (product.variants?.filter(v => v.is_active) || []).map((variant) => ({
+        product,
+        variant
+      }))
+    );
+  }, [filteredProducts]);
+
+  const handleUpdateCart = useCallback((productName: string, productImage: string | null, variant: ProductVariant, delta: number, forceRemove = false) => {
     const currentQty = cart.get(variant.id)?.quantity || 0;
     const newQty = currentQty + delta;
 
@@ -61,13 +183,13 @@ export default function ProductsPage() {
         toast.success(`Added to cart`);
       }
     }
-  };
+  }, [cart, addToCart, removeFromCart]);
 
-  const handleSetQuantity = (productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => {
+  const handleSetQuantity = useCallback((productName: string, productImage: string | null, variant: ProductVariant, newQty: number) => {
     updateQuantity(variant.id, Math.max(0, newQty));
-  };
+  }, [updateQuantity]);
 
-  const handleInputBlur = (variantId: string) => {
+  const handleInputBlur = useCallback((variantId: string) => {
     const qty = cart.get(variantId)?.quantity || 0;
     if (qty <= 0) {
       removeFromCart(variantId);
@@ -77,11 +199,11 @@ export default function ProductsPage() {
         return newSet;
       });
     }
-  };
+  }, [cart, removeFromCart]);
 
-  const activateInput = (variantId: string) => {
+  const activateInput = useCallback((variantId: string) => {
     setActiveInputs(prev => new Set(prev).add(variantId));
-  };
+  }, []);
 
   const getStockBadge = (variant: ProductVariant) => {
     const status = getStockStatus(variant.stock_quantity ?? 0, variant.low_stock_threshold ?? 10);
@@ -299,102 +421,16 @@ export default function ProductsPage() {
             </Card>
           ) : (
             /* Grid View */
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-              {filteredProducts.map((product) => {
-                const activeVariants = product.variants?.filter(v => v.is_active) || [];
-
-                return activeVariants.map((variant) => {
-                  const inStock = isInStock(variant);
-                  const cartQty = cart.get(variant.id)?.quantity || 0;
-
-                  return (
-                    <Card key={variant.id} className="overflow-hidden flex flex-col">
-                      {/* Product Image - Large and prominent */}
-                      <div className="aspect-square bg-muted relative">
-                        {product.image_url ? (
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-20 w-20 text-muted-foreground/30" />
-                          </div>
-                        )}
-                        <div className="absolute top-3 right-3">
-                          {getStockBadge(variant)}
-                        </div>
-                      </div>
-
-                      {/* Product Info */}
-                      <CardContent className="p-4 flex-1 flex flex-col">
-                        <div className="flex-1">
-                          <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-                            {variant.sku || 'No SKU'}
-                          </div>
-                          <h3 className="font-semibold text-lg line-clamp-1">{product.name}</h3>
-                          <p className="text-sm text-muted-foreground">{variant.variant_name}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                              Stock: {variant.stock_quantity ?? 0}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Add to Cart Controls */}
-                        <div className="mt-4">
-                          {activeInputs.has(variant.id) || cartQty > 0 ? (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-12 w-12"
-                                onClick={() => handleUpdateCart(product.name, product.image_url, variant, -1, true)}
-                              >
-                                <Minus className="h-5 w-5" />
-                              </Button>
-                              <Input
-                                type="number"
-                                min="0"
-                                value={cartQty || ''}
-                                onChange={(e) => {
-                                  const newQty = parseInt(e.target.value) || 0;
-                                  handleSetQuantity(product.name, product.image_url, variant, newQty);
-                                }}
-                                onBlur={() => handleInputBlur(variant.id)}
-                                className="flex-1 h-12 text-center text-xl font-bold"
-                              />
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-12 w-12"
-                                onClick={() => handleUpdateCart(product.name, product.image_url, variant, 1)}
-                                disabled={!inStock}
-                              >
-                                <Plus className="h-5 w-5" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              className="w-full h-12 text-base"
-                              onClick={() => {
-                                activateInput(variant.id);
-                                handleUpdateCart(product.name, product.image_url, variant, 1);
-                              }}
-                              disabled={!inStock}
-                            >
-                              <Plus className="mr-2 h-5 w-5" />
-                              Add to Order
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                });
-              })}
-            </div>
+            /* Virtualized Grid View */
+            <VirtualizedClientGrid
+              items={gridItems}
+              cart={cart}
+              activeInputs={activeInputs}
+              onUpdateCart={handleUpdateCart}
+              onSetQuantity={handleSetQuantity}
+              onInputBlur={handleInputBlur}
+              onActivateInput={activateInput}
+            />
           )}
         </CardContent>
       </Card>

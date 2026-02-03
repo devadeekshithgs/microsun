@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Package, Trash2, ArrowRight, Check } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ShoppingCart, Package, Trash2, ArrowRight, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '@/context/CartContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,7 +12,7 @@ import { useCreateOrder } from '@/hooks/useOrders';
 import { toast } from 'sonner';
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, clearCart, itemCount } = useCart();
+  const { cart, removeFromCart, updateQuantity, clearCart, itemCount, mtoItemCount } = useCart();
   const [notes, setNotes] = useState('');
   const createOrder = useCreateOrder();
   const navigate = useNavigate();
@@ -28,7 +29,8 @@ export default function CartPage() {
     try {
       const items = cartItems.map(item => ({
         variant_id: item.variant.id,
-        quantity: item.quantity
+        quantity: item.quantity,
+        is_make_to_order: item.isMakeToOrder || false
       }));
 
       await createOrder.mutateAsync({ items, notes });
@@ -95,6 +97,7 @@ export default function CartPage() {
                     <TableHead className="w-[100px]">Product</TableHead>
                     <TableHead>Details</TableHead>
                     <TableHead className="text-center w-[120px]">Quantity</TableHead>
+                    <TableHead className="w-[100px]">Type</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -129,6 +132,16 @@ export default function CartPage() {
                           onChange={(e) => handleUpdateQuantity(item.variant.id, parseInt(e.target.value) || 0)}
                           className="text-center"
                         />
+                      </TableCell>
+                      <TableCell>
+                        {item.isMakeToOrder ? (
+                          <Badge variant="outline" className="border-orange-400 text-orange-600 text-xs">
+                            <AlertTriangle className="h-3 w-3 mr-1" />
+                            MTO
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">In Stock</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -173,7 +186,23 @@ export default function CartPage() {
                 <span className="text-muted-foreground">Total Items</span>
                 <span className="font-medium">{itemCount}</span>
               </div>
+              {mtoItemCount > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-orange-500" />
+                    Make to Order
+                  </span>
+                  <Badge variant="outline" className="border-orange-400 text-orange-600">
+                    {mtoItemCount} items
+                  </Badge>
+                </div>
+              )}
               <div className="pt-4 border-t">
+                {mtoItemCount > 0 && (
+                  <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded mb-3">
+                    ⚠️ Some items are Make-to-Order and will require additional production time.
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground mb-4">
                   * This is a Request for Quotation (RFQ). No payment is required at this stage. We will review your order and start processing it.
                 </p>

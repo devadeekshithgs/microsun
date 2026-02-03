@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { type ProductVariant } from '@/hooks/useProducts';
 
 export interface CartItem {
@@ -7,12 +6,14 @@ export interface CartItem {
     quantity: number;
     productName: string;
     productImage: string | null;
+    isMakeToOrder: boolean; // New: Flag for make-to-order items
 }
 
 interface CartContextType {
     cart: Map<string, CartItem>;
     itemCount: number;
-    addToCart: (productName: string, productImage: string | null, variant: ProductVariant, quantity: number) => void;
+    mtoItemCount: number; // New: Count of MTO items
+    addToCart: (productName: string, productImage: string | null, variant: ProductVariant, quantity: number, isMakeToOrder?: boolean) => void;
     removeFromCart: (variantId: string) => void;
     updateQuantity: (variantId: string, quantity: number) => void;
     clearCart: () => void;
@@ -41,7 +42,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('microsun_cart', JSON.stringify(Array.from(cart.entries())));
     }, [cart]);
 
-    const addToCart = (productName: string, productImage: string | null, variant: ProductVariant, quantity: number) => {
+    const addToCart = (
+        productName: string,
+        productImage: string | null,
+        variant: ProductVariant,
+        quantity: number,
+        isMakeToOrder: boolean = false
+    ) => {
         setCart((prev) => {
             const next = new Map(prev);
             const existing = next.get(variant.id);
@@ -54,7 +61,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     variant,
                     quantity: newQty,
                     productName,
-                    productImage
+                    productImage,
+                    // Keep MTO flag if item was already in cart as MTO, or use new value
+                    isMakeToOrder: existing?.isMakeToOrder || isMakeToOrder
                 });
             }
             return next;
@@ -89,9 +98,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     const itemCount = Array.from(cart.values()).reduce((acc, item) => acc + item.quantity, 0);
+    const mtoItemCount = Array.from(cart.values())
+        .filter(item => item.isMakeToOrder)
+        .reduce((acc, item) => acc + item.quantity, 0);
 
     return (
-        <CartContext.Provider value={{ cart, itemCount, addToCart, removeFromCart, updateQuantity, clearCart }}>
+        <CartContext.Provider value={{
+            cart,
+            itemCount,
+            mtoItemCount,
+            addToCart,
+            removeFromCart,
+            updateQuantity,
+            clearCart
+        }}>
             {children}
         </CartContext.Provider>
     );

@@ -15,6 +15,8 @@ const Register = lazy(() => import("@/pages/auth/Register"));
 const WorkerRegister = lazy(() => import("@/pages/auth/WorkerRegister"));
 const CompleteProfile = lazy(() => import("@/pages/auth/CompleteProfile"));
 const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
+const ForgotPassword = lazy(() => import("@/pages/auth/ForgotPassword"));
+const UpdatePassword = lazy(() => import("@/pages/auth/UpdatePassword"));
 
 // Dashboard Pages
 const AdminDashboard = lazy(() => import("@/pages/admin/Dashboard"));
@@ -78,6 +80,8 @@ const App = () => (
                 {/* Public Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/update-password" element={<UpdatePassword />} />
                 <Route path="/worker-register" element={<WorkerRegister />} />
                 <Route path="/complete-profile" element={<CompleteProfile />} />
 
