@@ -127,8 +127,11 @@ export default function CartPage() {
                         <Input
                           type="number"
                           min="1"
-                          value={item.quantity}
-                          onChange={(e) => handleUpdateQuantity(item.variant.id, parseInt(e.target.value) || 0)}
+                          value={item.quantity === 0 ? '' : item.quantity}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            handleUpdateQuantity(item.variant.id, val === '' ? 0 : (parseInt(val) || 0));
+                          }}
                           className="text-center"
                         />
                       </TableCell>

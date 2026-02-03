@@ -99,10 +99,10 @@ export function CategoryDialog({ open, onOpenChange, category }: CategoryDialogP
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Enter category description" 
-                      rows={2} 
-                      {...field} 
+                    <Textarea
+                      placeholder="Enter category description"
+                      rows={2}
+                      {...field}
                       value={field.value || ''}
                     />
                   </FormControl>
@@ -118,11 +118,15 @@ export function CategoryDialog({ open, onOpenChange, category }: CategoryDialogP
                 <FormItem>
                   <FormLabel>Display Order</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      min="0" 
+                    <Input
+                      type="number"
+                      min="0"
                       {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      value={field.value === 0 ? '' : field.value}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        field.onChange(val === '' ? 0 : (parseInt(val) || 0));
+                      }}
                     />
                   </FormControl>
                   <FormDescription>Lower numbers appear first</FormDescription>

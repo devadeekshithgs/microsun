@@ -112,9 +112,9 @@ export function VariantDialog({ open, onOpenChange, productId, variant }: Varian
                 <FormItem>
                   <FormLabel>SKU</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., MS-CS9-2S" 
-                      {...field} 
+                    <Input
+                      placeholder="e.g., MS-CS9-2S"
+                      {...field}
                       value={field.value || ''}
                     />
                   </FormControl>
@@ -132,11 +132,15 @@ export function VariantDialog({ open, onOpenChange, productId, variant }: Varian
                   <FormItem>
                     <FormLabel>Stock</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="0" 
+                      <Input
+                        type="number"
+                        min="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        value={field.value === 0 ? '' : field.value}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : (parseInt(val) || 0));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -151,11 +155,15 @@ export function VariantDialog({ open, onOpenChange, productId, variant }: Varian
                   <FormItem>
                     <FormLabel>Low Alert</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="0" 
+                      <Input
+                        type="number"
+                        min="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 10)}
+                        value={field.value === 0 ? '' : field.value}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : (parseInt(val) || 10));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -170,11 +178,15 @@ export function VariantDialog({ open, onOpenChange, productId, variant }: Varian
                   <FormItem>
                     <FormLabel>Reorder At</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="0" 
+                      <Input
+                        type="number"
+                        min="0"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 20)}
+                        value={field.value === 0 ? '' : field.value}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val === '' ? 0 : (parseInt(val) || 20));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />

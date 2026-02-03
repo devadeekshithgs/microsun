@@ -187,9 +187,10 @@ function ClientVariantRow({
         <Input
           type="number"
           min="0"
-          value={cartQty}
+          value={cartQty === 0 ? '' : cartQty}
           onChange={(e) => {
-            const newQty = parseInt(e.target.value) || 0;
+            const val = e.target.value;
+            const newQty = val === '' ? 0 : (parseInt(val) || 0);
             const delta = newQty - cartQty;
             if (delta !== 0) {
               onUpdateCart(productName, productImage, variant, delta);

@@ -55,7 +55,7 @@ function EditableStock({
       <div className="flex items-center gap-1">
         <Input
           type="number"
-          value={editValue}
+          value={editValue === '0' ? '' : editValue}
           onChange={(e) => setEditValue(e.target.value)}
           onKeyDown={handleKeyDown}
           className="w-20 h-9 text-center"

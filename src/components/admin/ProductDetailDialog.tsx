@@ -26,12 +26,12 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
   const [uploading, setUploading] = useState(false);
   const [uploadingVariantId, setUploadingVariantId] = useState<string | null>(null);
   const [editedProduct, setEditedProduct] = useState<Partial<Product>>({});
-  const [newVariant, setNewVariant] = useState({ 
-    variant_name: '', 
-    sku: '', 
-    stock_quantity: 0, 
+  const [newVariant, setNewVariant] = useState({
+    variant_name: '',
+    sku: '',
+    stock_quantity: 0,
     low_stock_threshold: 10,
-    reorder_point: 20 
+    reorder_point: 20
   });
   const [showAddVariant, setShowAddVariant] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -210,8 +210,8 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
           <div className="space-y-4">
             <div className="aspect-square rounded-lg border bg-muted overflow-hidden relative group">
               {product.image_url ? (
-                <img 
-                  src={product.image_url} 
+                <img
+                  src={product.image_url}
                   alt={product.name}
                   className="h-full w-full object-cover"
                 />
@@ -348,8 +348,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                       <Input
                         type="number"
                         min="0"
-                        value={newVariant.stock_quantity}
-                        onChange={(e) => setNewVariant({ ...newVariant, stock_quantity: parseInt(e.target.value) || 0 })}
+                        value={newVariant.stock_quantity === 0 ? '' : newVariant.stock_quantity}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewVariant({ ...newVariant, stock_quantity: val === '' ? 0 : (parseInt(val) || 0) });
+                        }}
                       />
                     </div>
                     <div className="space-y-1">
@@ -360,8 +363,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                       <Input
                         type="number"
                         min="0"
-                        value={newVariant.low_stock_threshold}
-                        onChange={(e) => setNewVariant({ ...newVariant, low_stock_threshold: parseInt(e.target.value) || 10 })}
+                        value={newVariant.low_stock_threshold === 0 ? '' : newVariant.low_stock_threshold}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewVariant({ ...newVariant, low_stock_threshold: val === '' ? 0 : (parseInt(val) || 10) });
+                        }}
                       />
                     </div>
                     <div className="space-y-1">
@@ -372,8 +378,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                       <Input
                         type="number"
                         min="0"
-                        value={newVariant.reorder_point}
-                        onChange={(e) => setNewVariant({ ...newVariant, reorder_point: parseInt(e.target.value) || 20 })}
+                        value={newVariant.reorder_point === 0 ? '' : newVariant.reorder_point}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewVariant({ ...newVariant, reorder_point: val === '' ? 0 : (parseInt(val) || 20) });
+                        }}
                       />
                     </div>
                   </div>
@@ -397,14 +406,14 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                         <div className="relative group">
                           <div className="h-20 w-20 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
                             {variant.image_url ? (
-                              <img 
-                                src={variant.image_url} 
+                              <img
+                                src={variant.image_url}
                                 alt={variant.variant_name}
                                 className="h-full w-full object-cover"
                               />
                             ) : product.image_url ? (
-                              <img 
-                                src={product.image_url} 
+                              <img
+                                src={product.image_url}
                                 alt={variant.variant_name}
                                 className="h-full w-full object-cover opacity-50"
                               />
@@ -458,8 +467,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                                 </Button>
                                 <Input
                                   type="number"
-                                  value={variant.stock_quantity ?? 0}
-                                  onChange={(e) => handleVariantStockUpdate(variant, parseInt(e.target.value) || 0)}
+                                  value={(variant.stock_quantity ?? 0) === 0 ? '' : (variant.stock_quantity ?? 0)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    handleVariantStockUpdate(variant, val === '' ? 0 : (parseInt(val) || 0));
+                                  }}
                                   className="h-7 w-16 text-center"
                                 />
                                 <Button
@@ -482,8 +494,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                               <Input
                                 type="number"
                                 min="0"
-                                value={variant.low_stock_threshold ?? 10}
-                                onChange={(e) => handleVariantThresholdUpdate(variant.id, 'low_stock_threshold', parseInt(e.target.value) || 0)}
+                                value={(variant.low_stock_threshold ?? 10) === 0 ? '' : (variant.low_stock_threshold ?? 10)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleVariantThresholdUpdate(variant.id, 'low_stock_threshold', val === '' ? 0 : (parseInt(val) || 0));
+                                }}
                                 className="h-7"
                               />
                             </div>
@@ -497,8 +512,11 @@ export function ProductDetailDialog({ product, open, onOpenChange }: ProductDeta
                               <Input
                                 type="number"
                                 min="0"
-                                value={variant.reorder_point ?? 20}
-                                onChange={(e) => handleVariantThresholdUpdate(variant.id, 'reorder_point', parseInt(e.target.value) || 0)}
+                                value={(variant.reorder_point ?? 20) === 0 ? '' : (variant.reorder_point ?? 20)}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  handleVariantThresholdUpdate(variant.id, 'reorder_point', val === '' ? 0 : (parseInt(val) || 0));
+                                }}
                                 className="h-7"
                               />
                             </div>
