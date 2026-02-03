@@ -58,9 +58,9 @@ export function ImageLightbox({ isOpen, onClose, imageUrl, imageAlt }: ImageLigh
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-screen h-screen max-w-none max-h-none p-0 bg-black/95 border-none rounded-none">
+            <DialogContent className="w-[95vw] h-[85vh] sm:w-[90vw] sm:h-[85vh] lg:w-[80vw] lg:h-[80vh] max-w-[1200px] max-h-[85vh] p-0 bg-black/95 border-none rounded-lg">
                 <DialogTitle className="sr-only">{imageAlt}</DialogTitle>
-                <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                     {/* Close button */}
                     <Button
                         variant="ghost"
@@ -115,7 +115,7 @@ export function ImageLightbox({ isOpen, onClose, imageUrl, imageAlt }: ImageLigh
                     </div>
 
                     {/* Image container with zoom and scroll */}
-                    <div className="w-full h-full overflow-auto flex items-center justify-center p-8">
+                    <div className="w-full h-full overflow-auto flex items-center justify-center p-4 sm:p-6 lg:p-8">
                         <img
                             src={imageUrl}
                             alt={imageAlt}
