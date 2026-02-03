@@ -37,7 +37,6 @@ export interface Order {
     email: string;
     phone: string | null;
   };
-  assigned_worker_id?: string;
   items?: OrderItem[];
 }
 
@@ -54,7 +53,6 @@ export function useOrders(options: UseOrdersOptions = {}) {
         .from('orders')
         .select(`
           *,
-          assigned_worker_id,
           client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
           items:order_items(
             id,
@@ -121,7 +119,6 @@ export function useIncomingOrders() {
         .from('orders')
         .select(`
           *,
-          assigned_worker_id,
           client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
           items:order_items(
             id,
@@ -163,7 +160,6 @@ export function useKanbanOrders() {
         .from('orders')
         .select(`
           *,
-          assigned_worker_id,
           client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
           items:order_items(
             id,
@@ -274,17 +270,20 @@ export function useUpdateOrderStatus() {
   });
 }
 
-// Re-export hook
+// NOTE: useAssignOrder is disabled because assigned_worker_id column doesn't exist in the database
+// To enable worker assignment, add the column to the orders table in Supabase:
+// ALTER TABLE orders ADD COLUMN assigned_worker_id UUID REFERENCES profiles(id);
 export function useAssignOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ orderId, workerId }: { orderId: string; workerId: string | null }) => {
+      console.warn('useAssignOrder: assigned_worker_id column does not exist in orders table. Worker assignment is disabled.');
+      // Return the order without modification for now
       const { data, error } = await supabase
         .from('orders')
-        .update({ assigned_worker_id: workerId } as any)
+        .select('*')
         .eq('id', orderId)
-        .select()
         .single();
 
       if (error) throw error;

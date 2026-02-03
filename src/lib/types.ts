@@ -78,7 +78,6 @@ export interface Order {
   created_at: string;
   updated_at: string;
   client?: Profile;
-  assigned_worker_id?: string;
   items?: OrderItem[];
 }
 

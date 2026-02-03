@@ -15,12 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-
-// Import useWorkers
-import { useWorkers } from '@/hooks/useWorkers';
-import { useAssignOrder } from '@/hooks/useOrders';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 interface IncomingOrdersProps {
   orders: Order[];
@@ -29,8 +24,6 @@ interface IncomingOrdersProps {
 
 export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
   const updateStatus = useUpdateOrderStatus();
-  const assignOrder = useAssignOrder();
-  const { data: workers } = useWorkers();
 
   // Orders are already filtered by the hook
   const pendingOrders = orders;
@@ -50,15 +43,6 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
       toast.info('Order marked for review');
     } catch (error) {
       toast.error('Failed to update order');
-    }
-  };
-
-  const handleAssign = async (orderId: string, workerId: string | null) => {
-    try {
-      await assignOrder.mutateAsync({ orderId, workerId });
-      toast.success('Order assigned to worker');
-    } catch (error) {
-      toast.error('Failed to assign order');
     }
   };
 
@@ -119,7 +103,6 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
               <TableHead>Order #</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Items</TableHead>
-              <TableHead>Assigned To</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -147,26 +130,7 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
                     {order.items?.reduce((acc, item) => acc + item.quantity, 0) || 0} items
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <div className="min-w-[140px]">
-                    <Select
-                      value={order.assigned_worker_id || "unassigned"}
-                      onValueChange={(val) => handleAssign(order.id, val === "unassigned" ? null : val)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue placeholder="Assign Worker" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned" className="text-muted-foreground">Unassigned</SelectItem>
-                        {workers?.map(worker => (
-                          <SelectItem key={worker.id} value={worker.id}>
-                            {worker.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </TableCell>
+                {/* Worker assignment disabled - assigned_worker_id column not in database */}
                 <TableCell className="text-muted-foreground">
                   {format(new Date(order.created_at), 'dd MMM, HH:mm')}
                 </TableCell>
@@ -199,5 +163,62 @@ export function IncomingOrders({ orders, isLoading }: IncomingOrdersProps) {
         </Table>
       </CardContent>
     </Card>
+  );
+}
+
+// Order Details Dialog Component
+function OrderDetailsDialog({ order }: { order: Order }) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-9">
+          <Eye className="h-4 w-4 mr-1" />
+          View
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Order {order.order_number}</DialogTitle>
+          <DialogDescription>Order details and items</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="font-medium">Customer:</span>
+              <p>{order.client?.full_name || 'Unknown'}</p>
+            </div>
+            <div>
+              <span className="font-medium">Company:</span>
+              <p>{order.client?.company_name || 'N/A'}</p>
+            </div>
+            <div>
+              <span className="font-medium">Status:</span>
+              <p className="capitalize">{order.status}</p>
+            </div>
+            <div>
+              <span className="font-medium">Date:</span>
+              <p>{format(new Date(order.created_at), 'dd MMM yyyy, HH:mm')}</p>
+            </div>
+          </div>
+          {order.notes && (
+            <div>
+              <span className="font-medium">Notes:</span>
+              <p className="text-sm text-muted-foreground">{order.notes}</p>
+            </div>
+          )}
+          <div>
+            <span className="font-medium">Items:</span>
+            <ul className="mt-2 space-y-2">
+              {order.items?.map(item => (
+                <li key={item.id} className="flex justify-between text-sm border-b pb-2">
+                  <span>{item.variant?.product?.name} - {item.variant?.variant_name}</span>
+                  <span className="font-medium">x{item.quantity}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -47,7 +47,6 @@ export default function DebugPage() {
                 .from('orders')
                 .select(`
           *,
-          assigned_worker_id,
           client:profiles!orders_client_id_fkey(id, full_name, company_name, email, phone),
           items:order_items(
             id,
